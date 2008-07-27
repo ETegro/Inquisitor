@@ -1,0 +1,39 @@
+#!/bin/sh -e
+# NAME=HDD benchmark: Hdparm
+# DESCRIPTION=This benchmark runs on all hard drives in the system sequentially. Every hard drive is benchmarked for the buffered speed and the cached speed using basic hdparm -t and -T tests for several times. The results for every HDD are averaged and presented as benchmark results.
+# DESTROYS_HDD=false
+# POWEROFF_DURING_TEST=false
+# VERSION=0.1
+# TAGS=benchmark,hdd
+# DEPENDS=Disk Controller,HDD
+# VAR=AVG_SAMPLES:int:5:Number of tests per disc to average for result
+
+. /usr/share/inquisitor/functions-test
+
+test_succeed_if_no hdds
+
+for BLOCK_DEV in `get_hdds_list`; do
+	echo -n "HDD $BLOCK_DEV "
+
+	# Perform AVG_SAMPLES tests, calculate sum
+	for i in `seq 1 $AVG_SAMPLES`; do
+		BUFFERED=`hdparm -t $BLOCK_DEV | \
+		sed -ne '/Timing/ { s/^.*= *//; s, MB/sec,,; s/\.//; p }'`
+		CACHED=`hdparm -T $BLOCK_DEV | \
+		sed -ne '/Timing/ { s/^.*= *//; s, MB/sec,,; s/\.//; p }'`
+		BUFFERED_SUM=$(($BUFFERED_SUM + $BUFFERED))
+		CACHED_SUM=$(($CACHED_SUM + $CACHED))
+		echo -n '.'
+	done
+
+	# Convert to KB/s, calculate average
+	BUFFERED_AVG=$(($BUFFERED_SUM * 10 / $AVG_SAMPLES))
+	CACHED_AVG=$(($CACHED_SUM * 10 / $AVG_SAMPLES))
+
+	# Report result
+	echo " $BUFFERED_AVG / $CACHED_AVG KB/s"
+	benchmark_submit_float "HDD $BLOCK_DEV buffered speed" $BUFFERED_AVG
+	benchmark_submit_float "HDD $BLOCK_DEV cached speed" $CACHED_AVG
+done
+
+test_succeeded

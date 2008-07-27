@@ -1,0 +1,10 @@
+#!/bin/sh
+# NAME=Tape detect
+# DESCRIPTION=Detect tape drives using hal-device.
+# DEPENDS=Tape drive
+
+for UDI in `hal-find-by-property --key scsi.type --string tape`; do
+	vendor=`hal-get-property --udi "$UDI" --key scsi.vendor`
+	model=`hal-get-property --udi "$UDI" --key scsi.model`
+	$SHARE_DIR/add-component "Tape drive" "$vendor" "$model"
+done

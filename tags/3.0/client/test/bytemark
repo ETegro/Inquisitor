@@ -1,0 +1,54 @@
+#!/bin/sh -ef
+# NAME=BYTEmark benchmark suite
+# DESCRIPTION=The BYTEmark benchmark test suite is used to determine how the processor, its caches and coprocessors influence overall system performance. Its measurements can indicate problems with the processor subsystem and (since the processor is a major influence on overall system performance) give us an idea of how well a given system will perform. The BYTEmark test suite is especially valuable since it lets us directly compare computers with different processors and operating systems. The code used in BYTEmark tests simulates some of the real-world operations used by popular office and technical applications. Tests include: numeric and string sort, bitfield working, fourier and assignment manipulations, huffman, IDEA, LU decomposition, neural net.
+# DESTROYS_HDD=false
+# POWEROFF_DURING_TEST=false
+# VERSION=0.1
+# TAGS=benchmark,cpu,memory,ram
+# DEPENDS=CPU,Memory,Mainboard
+
+. /usr/share/inquisitor/functions-test
+
+exit_handler()
+{
+	[ -d "$WORKING_DIR" ] && rm -rf "$WORKING_DIR"
+}
+
+WORKING_DIR=`mktemp -d`
+
+cd $WORKING_DIR
+cp $SHARE_DIR/test/additional/NNET.DAT .
+cp $SHARE_DIR/test/additional/COM.DAT .
+nbench | tee result >$DEBUG_TTY
+
+benchmark_submit_float "Numeric sort" `grep "NUMERIC SORT" < result | \
+	awk '{print $4}'`
+benchmark_submit_float "String sort" `grep "STRING SORT" < result | \
+	awk '{print $4}'`
+benchmark_submit_float "Bitfield" `grep "BITFIELD" < result | \
+	awk '{print $3}'`
+benchmark_submit_float "FP emulation" `grep "FP EMULATION" < result | \
+	awk '{print $4}'`
+benchmark_submit_float "Fourier" `grep "FOURIER" < result | \
+	awk '{print $3}'`
+benchmark_submit_float "Assignment" `grep "ASSIGNMENT" < result | \
+	awk '{print $3}'`
+benchmark_submit_float "IDEA" `grep "IDEA" < result | \
+	awk '{print $3}'`
+benchmark_submit_float "Huffman" `grep "HUFFMAN" < result | \
+	awk '{print $3}'`
+benchmark_submit_float "Neural net" `grep "NEURAL NET" < result | \
+	awk '{print $4}'`
+benchmark_submit_float "Lu decomposition" `grep "LU DECOMPOSITION" < result | \
+	awk '{print $4}'`
+
+benchmark_submit_float "Integer Index" `grep "INTEGER INDEX" < result | \
+	awk '{print $4}' | sed -n '2p'`
+benchmark_submit_float "Floating-poing Index" \
+	`grep "FLOATING-POINT INDEX" < result | awk '{print $3}' | sed -n '2p'`
+benchmark_submit_float "Memory Index" `grep "MEMORY INDEX" < result | \
+	awk '{print $4}'`
+
+cd $HOME
+
+test_succeeded

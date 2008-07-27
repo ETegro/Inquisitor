@@ -1,0 +1,60 @@
+one:
+  id: 1
+  model_id: 1
+  profile_id: 1
+two:
+  id: 2
+  model_id: 1
+  profile_id: 1
+three:
+  id: 3
+  model_id: 1
+  profile_id: 1
+single_testing_failed_test:
+  id: 4
+  model_id: 1
+  profile_id: 1
+two_testings_new_hdd_cpu_done:
+  id: 5
+  model_id: 1
+  profile_id: 1
+switching_profile:
+  id: 6
+  model_id: 1
+  profile_id: 9
+last_computer:
+  id: 100000
+  model_id: 1
+  profile_id: 1
+alpha_order_1:
+  id: 1001
+  model_id: 1
+  profile_id: 1
+  order_id: 1
+alpha_order_2:
+  id: 1002
+  model_id: 1
+  profile_id: 1
+  order_id: 1
+alpha_order_3:
+  id: 1003
+  model_id: 1
+  profile_id: 1
+  order_id: 1
+alpha_order_4:
+  id: 1004
+  model_id: 1
+  profile_id: 1
+  order_id: 1
+boot_pc:
+  id: 20
+  model_id: 4
+  profile_id: 1
+running_test_stages:
+  id: 7
+  model_id: 1
+  profile_id: 1
+changing_hdd:
+  id: 8
+  model_id: 1
+  profile_id: 1

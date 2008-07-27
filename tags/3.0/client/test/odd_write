@@ -1,0 +1,183 @@
+#!/bin/sh -ef
+# NAME=ODD write
+# DESCRIPTION=This test is needed to record discs and at the same time to check corectness of this operation. It can detect if rewritable/recordable media is already inserted and tries to continue non-interactively. After detecting maximal writing speed (it can be forced by an option), blanking if it is rewritable non-blank media, it records specified ISO image. Then, it reads it to compare it's checksum with original one. After all of this we can make a conclusion about drives quality.
+# DESTROYS_HDD=false
+# IS_INTERACTIVE=true
+# POWEROFF_DURING_TEST=false
+# VERSION=0.1
+# DEPENDS=ODD
+# VAR=TEST_IMAGE:string:iso/testimage.iso:ISO image path (absolute or relative)
+# VAR=TEST_IMAGE_BLOCKS:int:332800:This images size in blocks (2048 bytes each)
+# VAR=TEST_IMAGE_MD5:string:ffffffffffffffffffffffffffffffff:Test image MD5 hash
+# VAR=WRITE_SPEED:int:10:Default write speed if it won't detect
+# VAR=WRITE_SPEED_FORCE:boolean:true:Force write speed using
+# VAR=WRITE_MESSAGE:string:Writing test disc:Message to print when test will start
+# VAR=FORCE_NON_INTERACTIVE:boolean:false:Force non-interactive mode for already prepared system
+
+. /usr/share/inquisitor/functions-test
+
+test_read()
+{
+	local odd=$1
+	local hash
+
+	hash=`readcd -v dev=$odd f=- sectors=0-$TEST_IMAGE_BLOCKS retries=8 | \
+		md5sum -b | awk '{print $1}'`
+	# If readcd doesn't work
+	[ -z "$hash" ] && {hash=`dd if=$odd bs=2048 count=$TEST_IMAGE_BLOCKS | \
+		md5sum -b | awk '{print $1}'` || true}
+
+	echo "Read data MD5 checksum: $hash" # Useful thing
+	[ "$hash" = "$TEST_IMAGE_MD5" ] && return 0 || return 1
+}
+
+test_write()
+{
+	local odd=$1
+
+	check_writeable_disc $odd
+	detect_maxspeed $odd
+	blank_if_needed $odd $SPEED
+
+	print_green_message "Writing..."
+	cdrecord dev=$odd driveropts=burnfree speed=$SPEED -delay 2 -\
+		-data $TEST_IMAGE && return 0 || return 1
+	print_green_message "Writing finished"
+}
+
+check_writeable_disc()
+{
+	local odd=$1
+
+	if cdrecord dev=$odd -atip | grep -q 'Is erasable'; then
+		print_green_message "Rewritable media already inserted, not ejecting"
+	else
+		print_green_message "Insert writable media..."
+		eject $odd || true
+	fi
+}
+
+detect_maxspeed()
+{
+	local odd=$1
+
+	if [ "$WRITE_SPEED_FORCE" = "true" ]; then
+		SPEED=$WRITE_SPEED
+	else
+		SPEED=`cdrecord dev=$odd -atip | \
+			sed -ne '/speed high/ s/^.*speed high: \(.*\)$/\1/ p' \
+				| head -n 1`
+		[ -z "$SPEED" ] && SPEED=$WRITE_SPEED || true
+	fi
+
+}
+
+blank_if_needed()
+{
+	local odd=$1
+	local speed=$2
+
+	if cdrecord dev=$odd -atip | grep -q 'Is erasable'; then
+		print_green_message "Blanking..."
+		cdrecord dev=$odd speed=$speed blank=fast >$DEBUG_TTY 2>&1
+		print_green_message "Blanking done"
+	else
+		print_green_message "Non rewritable media. Skipping blanking..."
+	fi
+}
+
+interactive()
+{
+	local odd=$1
+	local non_passed=1
+
+	while ( [ "$non_passed" -eq 1 ] ); do
+		eject $odd || true
+		require_attention
+		print_green_message "Drive ${odd}:"
+		print_green_message "Either press y and insert media for testing, or n if you want to finish test: "
+		read choice
+		dismiss_attention
+
+		if [ "$choice" = "n" ]; then
+			test_failed "User cancelled test for $odd"
+			break
+		fi
+
+		if test_write $odd; then
+			print_green_message \
+				"Write stage passed, performing read test..."
+
+			if test_read $odd; then
+				print_green_message "Drive test passed"
+				TESTED_QUANTITY=$(( $TESTED_QUANTITY + 1 ))
+				test_progress $TESTED_QUANTITY $ODD_QUANTITY
+				non_passed=0
+				eject $odd || true
+			else
+				print_red_message "Drive test failed"
+			fi
+		else
+			print_red_message "Write stage failed"
+		fi
+	done
+}
+
+need_kernel_module ide-cd
+
+ODD_QUANTITY=`get_odds_list | wc -l`
+test_succeed_if_no odds
+
+# Replace relative path with an absolute one
+if echo "$TEST_IMAGE" | grep -q "^\/"; then
+	true #already absolute path
+else
+	TEST_IMAGE="${SHARE_DIR}/${TEST_IMAGE}"
+fi
+
+TESTED_QUANTITY=0
+print_green_message "$WRITE_MESSAGE"
+
+for odd in `get_odds_list`; do
+	print_green_message "Testing drive ${odd}..."
+
+	# Forced non-interactive mode, no user actions allowed here
+	if [ "$FORCE_NON_INTERACTIVE" == "true" ]; then
+		if test_write $odd; then
+			if test_read $odd; then
+				TESTED_QUANTITY=$(( $TESTED_QUANTITY + 1 ))
+				test_progress $TESTED_QUANTITY $ODD_QUANTITY
+				eject $odd || true
+			else
+				test_failed "Read stage for $odd failed"
+			fi
+		else
+			test_failed "Write stage for $odd failed"
+		fi
+	fi
+
+	# Default mode, try to test drive if media present
+	if [ `check_writeable_odd $odd` == "true" ];then
+		print_green_message "Found inserted media. Trying to test..."
+		if test_write $odd; then
+			if test_read $odd; then
+				print_green_message "Drive test passed"
+				TESTED_QUANTITY=$(( $TESTED_QUANTITY + 1 ))
+				test_progress $TESTED_QUANTITY $ODD_QUANTITY
+				eject $odd || true
+			else
+				print_red_message \
+			"Read stage for $odd failed, going to interactive mode"
+				interactive $odd
+			fi
+		else
+			print_red_message \
+			"Write stage for $odd failed, going to interactive mode"
+			interactive $odd
+		fi
+	else
+		interactive $odd
+	fi
+done
+
+test_succeeded

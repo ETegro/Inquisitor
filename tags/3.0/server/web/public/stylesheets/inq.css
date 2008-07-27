@@ -1,0 +1,395 @@
+/*******************************************************************************
+
+Styles for computer_tabs layout
+
+********************************************************************************/
+
+body {
+	padding: 0px;
+	margin: 0px;
+	font-size: 0.85em;
+	font-family: sans-serif;
+	background: white;
+}
+
+#topbar {
+	background: #F5F5F5;
+	border-bottom: 1px solid #E0E0E0;
+}
+
+#topmenu {
+	padding: 0.5em;
+	float: left;
+}
+
+#login_box {
+	padding: 0.5em;
+	float: right;
+}
+
+a img {
+	border: 0px;
+}
+
+
+/* Title bar */
+
+#title_bar {
+	background: #AACFBE;
+	border-bottom: 1px solid #559F7D;	
+	padding-left: 4.5em;	
+	min-height: 2.2em;
+}
+
+#title_bar table {
+	border-collapse: collapse;
+	border: none;
+
+}
+
+#title_bar td {
+	color: #002514;
+	height: 2.2em;
+	vertical-align: middle;
+	border-right: 1px #559F7D dotted;
+	border-left: 1px #559F7D dotted;
+	text-align: center;
+}
+
+#title_bar_model {
+	font-weight: bold;
+	width: 18em;
+}
+
+#title_bar_serial {
+	font-weight: bold;
+	width: 8.6em;
+}
+
+#title_bar_shelf {
+	display: none;
+}
+
+td#title_bar_doc {
+	width: 26.6em;
+	border: none;
+}
+
+td#title_bar_profile_show {
+	width: 17.6em;
+}
+
+#title_bar_link {
+	float: right;
+	padding-right: 2em;
+	margin-top: -0.1em;
+}
+
+/* Progress bar */
+
+#progress_bar {
+	padding-left: 4.4em;
+	border: 0px solid white;
+}
+
+#progress_bar table {
+	border-collapse: collapse;
+	border: 0px;
+	margin-top: 1em;
+	margin-bottom: 1em;
+}
+
+#progress_bar td {
+	text-align: center;
+	padding: 0px;	
+}
+
+#progress_bar #computer_stages td {
+	width: 10em;
+	padding-left: 0.1em;
+	padding-right: 0.1em;
+}
+
+#computer_stages div {
+	height: 2.8em;
+	padding-left: 38px;
+	border: 1px solid #999;
+	position: relative ! important;
+}
+
+#computer_stages_comment {
+	background-color: #559F7D; 
+	color: white;
+	height: 2em;
+}
+
+#comment_body {
+	text-align: left !important;
+	padding-left: 1em !important;
+	padding-top: 0.4em !important;
+}
+
+.tools {
+	float: right;
+	font-size: 75%;
+	padding: 0.5em;
+}
+
+#progress_bar #computer_stages_comment .timedelta {
+	display: inline;
+}
+
+#progress_bar .overdue_corner, #progress_bar .comment_corner {
+	right: 0px;
+	bottom: 0px;
+	position: absolute;
+}
+
+#computer_stages_pointers td {
+	height: 11px;
+	font-size: 0px;
+	border: 0px;
+}
+
+.pointer_active {
+	background: url('/images/pointer_arrow.png') 50% 0% no-repeat;
+}
+
+.pointer_inactive {
+}
+
+#progress_bar .person, #progress_bar .bad_username, #progress_bar .timedelta, #progress_bar .computer_stage_name, #progress_bar .progress {
+	display: block;
+}
+
+#progress_bar .bad_username, #progress_bar .person {
+	font-size: 75%;
+}
+
+td.computer_stage_planned div {
+	background-color: #ebffef;
+	color: #999;
+	border-color: #999;
+}
+
+td.computer_stage_finished div {
+	background-color: #AACFBE;
+	color: #002514;
+	border-color: #559F7D;
+}
+
+td.computer_stage_running div {
+	background-color: #F3D079;
+	color: #4F3D12;
+	border-color: #A28A50;
+}
+
+/* tabbed pane */
+
+#testing_pane {
+	border-spacing: 0px;
+	border-collapse: collapse;
+	height: 23em;
+}
+
+#testing_pane td, #testing_pane th {
+	vertical-align: top;
+	padding: 0px;
+	border: 0px;
+}
+
+#testing_pane td table {
+	border-collapse: collapse;
+	border: hidden;
+}
+
+#testing_pane td table td, #testing_pane td table th {
+	height: 2em;
+	border-right: 1px dotted black;
+	border-bottom: 1px solid black;
+	vertical-align: middle;
+	padding-left: 0.2em;
+	padding-right: 0.2em; 
+}
+
+#testing_pane td table th {
+	height: 1.7em;
+}
+
+td#testing_plan {
+	border: 0.3em solid ! important;
+	border-right: none;
+	width: 18em;
+}
+
+#testing_plan table .testing_stage_name {
+	width: 13em;
+}
+
+.testing_stages_start, .testing_stages_end {
+	padding-left: 24px ! important;
+	font-weight: bold;
+	background: url('/images/clock.png') 90% 50% no-repeat #D0D0D0;
+//	background: #D0D0D0;
+}
+
+td#content {
+	border: 0.3em solid ! important;
+	width: 53.7em;
+}
+
+#content table {
+	width: 100%;
+}
+
+td#testings_tabs {
+	width: 4.2em;
+	padding-left: 0.3em;
+}
+
+#testings_tabs table {
+	width: 100%;
+}
+
+#testings_tabs td {
+	text-align: center;
+	padding: 0px ! important;
+	border-color: white ! important;
+}
+
+#info_tabs td {
+	width: 9.63em; 
+	text-align: center;
+	vertical-align: middle;
+	border-right: 0.2em solid ! important;
+}
+
+td#info_tabs td#info_tab_dummy {
+	width: 4.1em;
+	border: hidden ! important;
+}
+
+td.testing_stage_span {
+	text-align: center;
+}
+
+td.testing_stage_name {
+	text-align: left;
+	text-indent: 30px; 
+}
+
+tr.testing_stage_finished .testing_stage_name {
+	background: url('/images/stage_finished.png') 8px 50% no-repeat;
+}
+
+tr.testing_stage_failed .testing_stage_name {
+	background: url('/images/stage_failed.png') 8px 50% no-repeat;
+}
+tr.testing_stage_failed {
+	background-color: #ff7060;
+}
+
+tr.testing_stage_running .testing_stage_name {
+	background: url('/images/stage_running.png') 8px 50% no-repeat;
+}
+tr.testing_stage_running {
+	background-color: #f0f4f0;
+}
+
+tr.testing_stage_attention .testing_stage_name {
+	background: url('/images/stage_running.png') 8px 50% no-repeat;
+}
+tr.testing_stage_attention {
+	background-color: #f3d079;
+}
+
+tr.testing_stage_planned .testing_stage_name {
+//	background: url('/images/stage_planned.png') 8px 50% no-repeat;
+	color: #999;
+	font-style: italic;
+}
+
+tr.testing_stage_hanging .testing_stage_name {
+	background: url('/images/stage_hanging.png') 8px 50% no-repeat;
+}
+tr.testing_stage_hanging {
+	background-color: #ffa060;
+}
+
+.bad_username {
+	color: red;
+	font-weight: bold;
+}
+
+.datetime {
+}
+
+.note {
+        font-style: oblique;
+        font-size: 0.85em;
+}
+
+.hint {
+	color: #1A1406;
+	background: #F3D079;
+	margin: 1em;
+	margin-left: 1em;
+	margin-right: 1em;
+}
+
+.hint div.hint_border {
+	background: no-repeat 8px 50%;
+	padding: 0.5em;
+	padding-left: 50px ! important;
+	padding-right: 8px ! important;
+}
+
+#hint_type_info .hint_border {
+	background-image: url('/images/info.png');
+}
+
+#hint_type_okay .hint_border {
+	background-image: url('/images/okay.png');
+}
+
+#hint_type_confirm .hint_border {
+	background-image: url('/images/confirm.png');
+}
+
+#hint_type_error .hint_border {
+	background-image: url('/images/error.png');
+}
+
+input[type=submit] {
+	min-width: 4em;
+}
+
+#close_placeholder {
+	visibility: hidden;
+}
+
+.testing_profile {
+	text-align: center;
+	margin-top: 3em;
+	color: #707070;
+	font-style: italic;
+}
+
+.testing_profile a {
+	color: #303030;
+	font-style: normal;
+}
+
+#title_bar_profile_edit {
+	display: none;
+}
+
+#login_form {
+	width: 30em;
+	background: rgb(255, 255, 192);
+	padding: 1em;
+}
+
+.username {
+	font-weight: bold;
+}

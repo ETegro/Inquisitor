@@ -1,0 +1,139 @@
+#!/bin/sh
+
+PUBLISH_DIR=$HOME/publish
+
+# Set up null communications (only local storage of files)
+init_communication()
+{
+	mkdir -p $PUBLISH_DIR
+}
+
+# Store file into publish directory for latter packaging
+publish()
+{
+	cp "$1" "$PUBLISH_DIR/`basename $1`"
+}
+
+finalize()
+{
+	dialog --clear --yesno "Insert USB Flash" 5 40
+	if [ $? = 0 ]; then
+		sleep 15
+		echo -n "Mount USB Flash:"
+		mount /media/usbdisk >/dev/null 2>&1 && echo_success || echo_failure
+		echo
+		if mount | grep -q "/media/usbdisk"; then
+			pushd ~/
+				tar -cjf /media/usbdisk/`cat ~/old-full-serial | tr "/" "."`-`cat ~/publish/PROFILE`.tar.bz2 publish
+			popd
+			echo -n "Unmount USB Flash:"
+			umount /media/usbdisk >/dev/null 2>&1 && echo_success || echo_failure
+			echo
+		fi
+	fi
+}
+
+plan_test_script()
+{
+	true
+}
+
+test_stage_advance()
+{
+	local stage=$1
+	local event=$2
+	local comment=`echo -n "$3" | ruby -e 'require "cgi"; print CGI::escape($stdin.read)'`
+
+	echo -n "Test $stage	$event" >>$HOME/stages.txt
+	[ -z "$comment" ] || echo -n "	($comment)" >>$HOME/stages.txt
+	echo "	`date`" >>$HOME/stages.txt
+}
+
+test_stage_progress()
+{
+	true
+}
+
+test_promise_time()
+{
+	true
+}
+
+submit_components()
+{
+	true
+}
+
+submit_additional_components()
+{
+	true
+}
+
+# Mark current testing as finished
+testing_finished()
+{
+	true
+}
+
+set_ip()
+{
+	true
+}
+
+watchdog()
+{
+	true
+}
+
+publish_my_ip()
+{
+	true
+}
+
+benchmark_submit_float()
+{
+	echo "$1	$2" >>$HOME/benchmarks.txt
+}
+
+benchmark_submit_string()
+{
+	echo "$1	$2" >>$HOME/benchmarks.txt
+}
+
+monitoring_submit()
+{
+	echo "`date +%s`	$2" >>$HOME/monitoring_${MONITORING_NAME}_$1.txt
+}
+
+monitoring_submit_multiple()
+{
+	cat $1 >>$HOME/monitoring_${MONITORING_NAME}.txt
+}
+
+require_attention()
+{
+	true
+}
+
+dismiss_attention()
+{
+	true
+}
+
+get_needed_firmwares_list()
+{
+	print_red_message "get_needed_firmwares_list() is not available in LiveCD version"
+	false
+}
+
+boot_from_image()
+{
+	print_red_message "boot_from_image() is not available in LiveCD version"
+	false
+}
+
+check_audit()
+{
+	print_red_message "check_audit() is not available in LiveCD version"
+	false
+}

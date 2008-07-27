@@ -1,0 +1,11 @@
+<%= error_messages_for :profile %>
+
+<table>
+<tr><td class="panel">
+<h1>Name: <%= @profile.name %></h1>
+	<%= render :partial => 'form' %>
+</td></tr>
+</table>
+
+<font size=4><%= link_to 'Show', :action => 'show', :id => @profile %> |
+<%= link_to 'Back', :action => 'index' %></font>

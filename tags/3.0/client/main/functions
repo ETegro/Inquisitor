@@ -1,0 +1,342 @@
+#!/bin/sh
+# Common functions for most Inquisitor shell script needs.
+#
+# This file includes all functions that are generic and can be called
+# from multiple different modules. For functions specific to one
+# particular kind of a *module* (for example, for "test" modules),
+# see "functions-*module*" file, i.e. "functions-test".
+
+# Set the initial default search path for use by startup scripts.
+export PATH="/sbin:/usr/sbin:/usr/local/sbin:/bin:/usr/bin:/usr/local/bin:/usr/X11R6/bin"
+
+ALERT_ATTENTION='65535 65535 0'
+ALERT_FAILURE='65535 0 0'
+ALERT_PASSED='0 65535 0'
+
+. $SHARE_DIR/outformat
+
+# Prints success marker @[ DONE ]@ in success color to stdout.
+echo_success()
+{
+	MOVE_TO_COL
+	echo -n '[ '
+	SETCOLOR_SUCCESS
+	echo -n 'DONE'
+	SETCOLOR_NORMAL
+	echo ' ]'
+}
+
+# Prints failure marker @[FAILED]@ in failure color to stdout.
+echo_failure()
+{
+	MOVE_TO_COL
+	echo -n '['
+	SETCOLOR_FAILURE
+	echo -n 'FAILED'
+	SETCOLOR_NORMAL
+	echo ']'
+}
+
+# Prints skipped marker @[ SKIP ]@ in warning color to stdout.
+echo_skipped()
+{
+	MOVE_TO_COL
+	echo -n '['
+	SETCOLOR_WARNING
+	echo -n ' SKIP '
+	SETCOLOR_NORMAL
+	echo ']'
+}
+
+# Prints passed marker @[PASSED]@ in warning color to stdout.
+echo_passed()
+{
+	MOVE_TO_COL
+	echo -n '['
+	SETCOLOR_WARNING
+	echo -n 'PASSED'
+	SETCOLOR_NORMAL
+	echo ']'
+}
+
+# Prints running test marker @[CALLED]@ in warning color to stdout.
+echo_running()
+{
+	MOVE_TO_COL
+	echo -n '['
+	SETCOLOR_WARNING
+	echo -n 'CALLED'
+	SETCOLOR_NORMAL
+	echo ']'
+}
+
+fatal_failure()
+{
+	echo -n $1
+	echo_failure
+	exit 1
+}
+
+test_progress()
+{
+	COMPLETE=$1
+	TOTAL=$2
+
+	echo -en "\r"
+	echo -n "Test $TEST_NAME "
+
+	echo -en $COMPLETE/$TOTAL"\t"
+
+	#Show percents
+	if [ "$TOTAL" -gt 40 ] ; then
+		echo -n "("$(( 100 * $COMPLETE / $TOTAL ))%")"
+	else
+		echo -n "["
+		for i in `seq 1 $COMPLETE` ; do echo -n "#" ; done
+		for i in `seq $(($COMPLETE + 1)) $TOTAL` ; do echo -n "." ; done
+		echo -n "]"
+	fi
+
+	test_stage_progress $COMPLETE $TOTAL
+}
+
+# Issues a managed test run; should be called by a scheduler.
+#
+# Input:
+# $1 - script in test directory to run
+# TEST_NAME - unique identifier of test stage in testing (for database)
+# + variables to pass to the test
+run_test()
+{
+	# Mark test as started
+	echo -n "Test $TEST_NAME"
+	echo_running
+	test_stage_advance "$TEST_NAME" start
+
+	MSG_DIR=`mktemp -d`
+	# Run test, collect status + comment
+	export PLANNER=1
+	(if "$SHARE_DIR/test/$1" 4>$MSG_DIR/comment 2>&1; then
+		echo -n "Test $TEST_NAME"
+		echo_success
+		test_stage_advance "$TEST_NAME" finish "`cat $MSG_DIR/comment`"
+	else
+		touch ${MSG_DIR}/exit_fail
+		echo -n "Test $TEST_NAME"
+		echo_failure
+		test_stage_advance "$TEST_NAME" fail "`cat $MSG_DIR/comment`"
+		echo
+		echo "Fatal failure: testing stops"
+		echo "Reason: `cat $MSG_DIR/comment`"
+	fi) | tee /dev/inqlog
+	[ -f ${MSG_DIR}/exit_fail ] && return 1 || return 0
+}
+
+# Starts a monitoring in background. Makes sure that running monitoring
+# is unique.
+#
+# Input:
+# $1 - name of monitoring script
+monitoring_start()
+{
+	monitoring_stop $1
+	cd $SHARE_DIR/monitoring
+	./$1 &
+	echo $! >$HOME/monitoring_$1.pid
+}
+
+# Stops a monitoring, running in background.
+#
+# Input:
+# $1 - name of monitoring script
+monitoring_stop()
+{
+	if [ -r "$HOME/monitoring_$1.pid" ]; then
+		kill `cat $HOME/monitoring_$1.pid` 2>$DEBUG_TTY || :
+		rm -f $HOME/monitoring_$1.pid
+	fi
+}
+
+refresh_console()
+{
+	chvt 4
+	sleep 1
+	chvt 1
+	test_set_status	
+}
+
+watchdog_start()
+{
+	echo -n 'Starting watchdog'
+	watchdog &
+	echo $! >~/watchdog.pid
+	echo_success
+}
+
+watchdog_stop()
+{
+	echo -n 'Stopping watchdog'
+	if [ -r ~/watchdog.pid ]; then
+		kill `cat ~/watchdog.pid` ||
+		rm -f ~/watchdog.pid
+		echo_success
+	else
+		echo_skipped
+	fi
+}
+
+# start_background(PIDFILE, CPULIST, CMDLINE)
+# Starts a process CMDLINE in background, setting CPU affinity to
+# CPU_LIST (if not empty). Saves PID of the program in PIDFILE.
+start_background()
+{
+	local PIDFILE=$1
+	shift
+	local CPULIST=$1
+	shift
+	if [ -n "$CPULIST" ]; then
+		taskset	-c "$CPULIST" $@ &
+		echo $! >$PIDFILE
+	else
+		$@ &
+		echo $! >$PIDFILE
+	fi
+}
+
+stop_background()
+{
+	kill `cat "$1"`
+	rm -f "$1"
+}
+
+print_green_message()
+{
+	echo ""
+	SETCOLOR_SUCCESS
+	echo "$1"
+	SETCOLOR_NORMAL
+	echo ""
+}
+
+print_red_message()
+{
+	echo ""
+	SETCOLOR_FAILURE
+	echo "$1"
+	SETCOLOR_NORMAL
+	echo ""
+}
+
+IP_SUITE='/sbin/ip'
+
+dev_for_route_to_server()
+{
+	dev=`$IP_SUITE -o -4 route get $SERVER | grep -o 'dev [^ ]*'`
+	echo ${dev#'dev '}
+}
+
+subnet_for_dev()
+{
+	local dev=$1
+	local ip=
+	local mask=
+	local addr='\([0-9]\+\)'
+	addr=$addr'\.'$addr'\.'$addr'\.'$addr
+	local pattern='ip=$(( ((\1 << 24) | (\2 << 16) | (\3 << 8) | (\4)) \& (((1 << (32 - \5)) - 1) ^ 0xffffffff) ));'
+	pattern=$pattern'mask=\5;'
+	pattern='s/^.*inet '$addr'\/\([0-9]\+\).*$/'$pattern'/'
+	eval `$IP_SUITE -o -4 address show $dev | sed "$pattern" `
+	echo "$(( ip >> 24 )).$(( (ip >> 16) & 255 )).$(( (ip >> 8) & 255 )).$(( ip & 255 ))/$mask"
+}
+
+get_hdds_list()
+{
+	for UDI in `hal-find-by-property --key=storage.drive_type --string disk`; do
+		[ `hal-get-property --udi "$UDI" --key storage.bus` = "usb" ] && continue
+		hal-get-property --udi "$UDI" --key block.device
+	done
+}
+
+get_odds_list()
+{
+	for UDI in `hal-find-by-capability --capability storage.cdrom`; do
+		hal-device "$UDI" |
+		sed -n "/info.product/s/^.* = '\(.*\)' .*$/\1/gp" |
+		egrep -q "(RMM2 VDrive|Virtual)" ||
+		hal-get-property --udi "$UDI" --key block.device
+	done
+}
+
+get_fdds_list()
+{
+	for UDI in `hal-find-by-property --key=storage.drive_type --string floppy`; do
+		hal-get-property --udi "$UDI" --key block.device
+	done
+}
+
+get_nics_list()
+{
+	cat /proc/net/dev | grep eth
+}
+
+get_interface_ipaddr()
+{
+	/sbin/ifconfig eth$1 | grep 'inet addr:' | sed 's/^.*:\(.*\)  Bcast.*$/\1/;'
+}
+
+check_writeable_odd()
+{
+	if cdrecord dev=$1 -atip | grep -q 'ATIP info from disk' >$DEBUG_TTY 2>&1; then
+		echo "true"
+	else
+		echo "false"
+	fi
+}
+
+check_readable_odd()
+{
+	if readcd dev=$1 f=/dev/null -fulltoc | grep -q 'TOC len' >$DEBUG_TTY 2>&1; then
+		echo "true"
+	else
+		echo "false"
+	fi
+}
+
+# Waits for 10 seconds and forces hard reboot sequence using procfs
+# system request.
+hard_reboot()
+{
+	print_red_message "Forcing hard reboot now!"
+	sleep 10
+	echo 1 > /proc/sys/kernel/sysrq
+	echo b > /proc/sysrq-trigger
+}
+
+# Waits for 10 seconds and forces hard shutdown (usually a poweroff)
+# sequence using procfs system request.
+hard_shutdown()
+{
+	print_red_message "Forcing hard shutdown now!"
+	sleep 10
+	echo 1 > /proc/sys/kernel/sysrq
+	echo o > /proc/sysrq-trigger
+}
+
+test_succeed_if_no()
+{
+	local quantity=`get_$1_list | wc -l`
+	if [ "$quantity" -eq 0 ]; then
+		test_succeeded "No `echo $1 | sed -n 's/^\(.*\)s$/\1/pg' | tr a-z A-Z`s found"
+		exit 0
+	fi
+}
+
+need_kernel_module()
+{
+	if ! lsmod | grep -q "^$1"; then
+		echo -n "Loading $1 kernel module..."
+		modprobe $1 || true
+		sleep 10
+		echo_success
+	fi
+}

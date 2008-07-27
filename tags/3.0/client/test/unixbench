@@ -1,0 +1,30 @@
+#!/bin/sh -e
+# NAME=UnixBench benchmark suite
+# DESCRIPTION=This test is a general-purpose benchmark designed to provide a basic evaluation of the performance of a Unix-like system. It runs a set of tests to evaluate various aspects of system performance, and then generates a set of scores. Here, we are using UnixBench version 5 (multi-CPU aware branch) without 2D/3D graphics benchmarks.
+# DESTROYS_HDD=false
+# POWEROFF_DURING_TEST=false
+# VERSION=0.1
+# TAGS=benchmark,cpu,stress,memory,ram
+# DEPENDS=CPU,Memory,Mainboard
+
+. /usr/share/inquisitor/functions-test
+
+exit_handler()
+{
+	[ -d "$WORKING_DIR" ] && rm -rf "$WORKING_DIR"
+	cd $HOME
+}
+
+WORKING_DIR=`mktemp -d`
+
+echo -n "Running UNIX Bench Multi-CPU benchmark..."
+cd $WORKING_DIR
+mkdir pgms testdir results tmp
+cp $LIB_DIR/unixbench/* pgms/
+mv pgms/dc.dat testdir/
+mv pgms/sort.src testdir/
+
+benchmark_submit_float "All CPUs score" `unixbench | tee $DEBUG_TTY | \
+	grep "Index Score" | sed -n "$ p" | awk '{print $NF}'`
+echo_success
+test_succeeded

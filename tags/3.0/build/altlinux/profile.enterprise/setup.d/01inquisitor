@@ -1,0 +1,3 @@
+ln -sf inquisitor/remounttab /etc/
+ln -sf inquisitor/overlaytab /etc/
+#ln -sf inquisitor/pci.ids /usr/share/

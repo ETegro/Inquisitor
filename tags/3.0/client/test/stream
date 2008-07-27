@@ -1,0 +1,35 @@
+#!/bin/sh -ef
+# NAME=Memory benchmark: STREAM
+# DESCRIPTION=The STREAM benchmark is a simple synthetic benchmark program that measures sustainable memory bandwidth (in MiB/s) and the corresponding computation rate for simple vector kernels. A version written in C language and optimized for single processor systems is used.
+# DESTROYS_HDD=false
+# POWEROFF_DURING_TEST=false
+# VERSION=0.1
+# TAGS=benchmark,ram,memory
+# DEPENDS=Memory
+
+. /usr/share/inquisitor/functions-test
+
+# As STREAM benchmark is rather fast, we will easily run it several
+# times. Results won't diverge meaningfully.
+
+echo -n "Copy operation..."
+benchmark_submit_float "Memory Copy operation" `stream-mem | grep "^Copy" | \
+	awk '{print $2}'`
+echo_success
+
+echo -n "Scale operation..."
+benchmark_submit_float "Memory Scale operation" `stream-mem | grep "^Scale" | \
+	awk '{print $2}'`
+echo_success
+
+echo -n "Add operation..."
+benchmark_submit_float "Memory Add operation" `stream-mem | grep "^Add" | \
+	awk '{print $2}'`
+echo_success
+
+echo -n "Triad operation..."
+benchmark_submit_float "Memory Triad operation" `stream-mem | grep "^Triad" | \
+	awk '{print $2}'`
+echo_success
+
+test_succeeded

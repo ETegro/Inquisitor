@@ -1,0 +1,12 @@
+PUBLISHER="GreyCat"
+ORIGIN="Inquisitor"
+SUITE="Live CD"
+CODENAME="ALT Linux base"
+VERSION="@@INQ_VERSION@@"
+THEME=inquisitor-livecd
+LANGS="en_US"
+ARCH=@@TARGET@@
+
+OUT=altlinux
+IDENT=live
+STAGENAME=livecd
