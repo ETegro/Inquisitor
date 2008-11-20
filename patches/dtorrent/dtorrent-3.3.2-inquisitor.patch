@@ -1,0 +1,77 @@
+diff -urN ctorrent-dnh3.3.2/btconfig.cpp ctorrent-dnh3.3.2-inquisitor/btconfig.cpp
+--- ctorrent-dnh3.3.2/btconfig.cpp	2008-06-15 04:00:19.000000000 +0400
++++ ctorrent-dnh3.3.2-inquisitor/btconfig.cpp	2008-08-22 17:18:23.000000000 +0400
+@@ -47,3 +47,4 @@
+ 
+ char *cfg_user_agent = (char*) 0;
+ 
++unsigned char arg_flg_file_check = 1;
+diff -urN ctorrent-dnh3.3.2/btconfig.h ctorrent-dnh3.3.2-inquisitor/btconfig.h
+--- ctorrent-dnh3.3.2/btconfig.h	2008-06-15 04:00:19.000000000 +0400
++++ ctorrent-dnh3.3.2-inquisitor/btconfig.h	2008-08-22 17:27:58.000000000 +0400
+@@ -57,4 +57,6 @@
+ 
+ extern char *arg_ctcs;
+ extern char *arg_completion_exit;
++
++extern unsigned char arg_flg_file_check;
+ #endif
+diff -urN ctorrent-dnh3.3.2/btfiles.cpp ctorrent-dnh3.3.2-inquisitor/btfiles.cpp
+--- ctorrent-dnh3.3.2/btfiles.cpp	2008-06-15 04:00:19.000000000 +0400
++++ ctorrent-dnh3.3.2-inquisitor/btfiles.cpp	2008-08-22 17:20:27.000000000 +0400
+@@ -641,14 +641,16 @@
+       }
+     }else{
+       if( !check_exist) check_exist = 1;
+-      if( !(S_IFREG & sb.st_mode) ){
+-        CONSOLE.Warning(1, "error, file \"%s\" is not a regular file.", fn);
+-        return -1;
+-      }
+-      if(sb.st_size != pbt->bf_length){
+-        CONSOLE.Warning(1,"error, file \"%s\" size doesn't match; must be %llu",
+-                fn, (unsigned long long)(pbt->bf_length));
+-        return -1;
++      if(arg_flg_file_check){
++        if( !(S_IFREG & sb.st_mode) ){
++          CONSOLE.Warning(1, "error, file \"%s\" is not a regular file.", fn);
++          return -1;
++        }
++        if(sb.st_size != pbt->bf_length){
++          CONSOLE.Warning(1,"error, file \"%s\" size doesn't match; must be %llu",
++                  fn, (unsigned long long)(pbt->bf_length));
++          return -1;
++        }
+       }
+     }
+   } //end for
+diff -urN ctorrent-dnh3.3.2/ctorrent.cpp ctorrent-dnh3.3.2-inquisitor/ctorrent.cpp
+--- ctorrent-dnh3.3.2/ctorrent.cpp	2008-06-15 04:00:19.000000000 +0400
++++ ctorrent-dnh3.3.2-inquisitor/ctorrent.cpp	2008-08-22 17:29:43.000000000 +0400
+@@ -141,7 +141,7 @@
+ 
+   if( 0==strncmp(argv[1], "-t", 2) )
+     opts = "tc:l:ps:u:";
+-  else opts = "aA:b:cC:dD:e:E:fi:I:M:m:n:P:p:s:S:Tu:U:vxX:z:hH";
++  else opts = "aA:b:cC:dD:e:E:fi:I:M:m:n:P:p:s:S:Tu:U:vxX:z:hH:r";
+ 
+   while( (c=getopt(argc, argv, opts)) != -1 )
+     switch( c ){
+@@ -337,6 +337,10 @@
+     case 'd':			// daemon mode (fork to background)
+       arg_daemon++;
+       break;
++    
++    case 'r':			// skip regular file and it's size check
++      arg_flg_file_check = 0;
++      break;
+ 
+     case 'h':
+     case 'H':			// help
+@@ -431,6 +435,7 @@
+     "Run command upon download completion (\"user exit\")");
+   fprintf(stderr, "%-15s %s\n", "-d", "Daemon mode (fork to background)");
+   fprintf(stderr, "%-15s %s\n", "-dd", "Daemon mode with I/O redirection");
++  fprintf(stderr, "%-15s %s\n", "-r", "Skip regular file and it's size check");
+ 
+   fprintf(stderr,"\nMake metainfo (torrent) file options:\n");
+   fprintf(stderr, "%-15s %s\n", "-t", "Create a new torrent file");

@@ -1,0 +1,20 @@
+diff -urN 20060727-bnbt85-src/tracker_announce.cpp 20060727-bnbt85-src-inquisitor/tracker_announce.cpp
+--- 20060727-bnbt85-src/tracker_announce.cpp	2006-02-06 16:36:55.000000000 +0300
++++ 20060727-bnbt85-src-inquisitor/tracker_announce.cpp	2008-11-18 15:59:11.000000000 +0300
+@@ -77,6 +77,8 @@
+ 	string strIPConv = strIP.c_str( );
+ 
+ 	// Harold - This prevents NAT IPs from being manually specified in the tracker.
++	/* Disable all following code for Inquisitor related tasks
++
+ 	if( m_iBlockNATedIP == 1 && ( !strTempIP.empty( ) && ( strTempIP.substr(0,8) == "192.168." || strTempIP.substr(0,8) == "169.254." || strTempIP.substr(0,3) == "10." || strTempIP.substr(0,7) == "172.16." || strTempIP.substr(0,7) == "172.17." || strTempIP.substr(0,7) == "172.18." || strTempIP.substr(0,7) == "172.19." || strTempIP.substr(0,7) == "172.20." || strTempIP.substr(0,7) == "172.21." || strTempIP.substr(0,7) == "172.22." || strTempIP.substr(0,7) == "172.23." || strTempIP.substr(0,7) == "172.24." || strTempIP.substr(0,7) == "172.25." || strTempIP.substr(0,7) == "172.26." || strTempIP.substr(0,7) == "172.27." || strTempIP.substr(0,7) == "172.28." || strTempIP.substr(0,7) == "172.29." || strTempIP.substr(0,7) == "172.30." || strTempIP.substr(0,7) == "172.31." || strTempIP.substr(0,7) == "172.32." || strTempIP == "127.0.0.1" ) ) )
+ 		strTempIP = "";
+ 
+@@ -91,6 +93,7 @@
+ 		if( !strTempIP.empty( ) && strTempIP.find_first_not_of( "1234567890." ) == string :: npos )
+ 			strIP = strTempIP;
+ 	}
++	*/
+ 
+ 	// Harold - End NAT IP Handling
+ 	// retrieve a ton of parameters
