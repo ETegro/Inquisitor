@@ -1,0 +1,80 @@
+#!/bin/sh
+# NAME=Memory detect
+# DESCRIPTION=Detect DIMMs using SPD, IPMI, DMI, /proc.
+# DEPENDS=Memory
+
+detect_mem_quantity()
+{
+	DMI_TOTAL_MEM_COUNT=`cat $HOME/dmi.log 2>$DEBUG_TTY | grep -c '^Memory Device$' || true`
+	DMI_NOT_INST_COUNT=`cat $HOME/dmi.log 2>$DEBUG_TTY | grep -c 'Size: No Module Installed' || true`
+	DMI_MEM_COUNT=$(( $DMI_TOTAL_MEM_COUNT - $DMI_NOT_INST_COUNT ))
+	SPD_MEM_COUNT=`cat $HOME/spd.log 2>$DEBUG_TTY | sed -n 's/Number of SDRAM DIMMs detected and decoded: //p'`
+	if [ -z "$SPD_MEM_COUNT" ]; then
+		SPD_MEM_COUNT=0
+	fi
+}
+
+spd_detect()
+{
+	echo "$1" | while read L; do 
+		MEM_INFO=`cat $HOME/spd.log 2>$DEBUG_TTY | grep -A 69 "^$L" || true`
+		MEM_SIZE=`echo "$MEM_INFO" | sed -n 's/^Size *//p' | head -n1 | sed 's/ *$//'`
+		MEM_SPEED=`echo "$MEM_INFO" | sed -n 's/^Maximum module speed *//p' | head -n1 | sed 's/DDR //' | sed 's/ *$//'`
+		MEM_TYPE=`echo "$MEM_INFO" | sed -n 's/^Fundamental Memory type *//p' | head -n1 | sed 's/ *$//'`
+		MEM_VENDOR=`echo "$MEM_INFO" | sed -n 's/^Manufacturer *//p' | head -n1 | sed 's/ *$//'`
+		MEM_SERIAL=`echo "$MEM_INFO" | sed -n 's/^Assembly Serial Number *0x//p' | head -n1 | sed 's/ *$//'`
+		MEM_MODEL="$MEM_SIZE $MEM_SPEED $MEM_TYPE"
+		echo Memory "$MEM_VENDOR" "$MEM_MODEL" "$MEM_SERIAL" ' - decode-dimms.pl' >> $HOME/debug.log
+		add_component Memory "$MEM_VENDOR" "$MEM_MODEL" "$MEM_SERIAL" ""
+	done
+}
+
+fru_detect()
+{
+	echo "$1" | while read L; do
+		MEM_INFO=`cat $HOME/fru.log 2>$DEBUG_TTY | grep -A 9 "^$L" || true`
+		if [ -n "$MEM_INFO" ] && [ -n "`echo "$MEM_INFO" | sed -n '2p'`" ]; then
+			MEM_VENDOR=`$SHARE_DIR/vendor \`echo "$MEM_INFO" |  sed -n 's/ Board Mfg *: //p' | head -n1 | sed 's/0*$//'\``
+			MEM_MODEL=`echo "$MEM_INFO" | sed -n 's/ Board Product *: //p' | head -n1`
+			MEM_SERIAL=`echo "$MEM_INFO" | sed -n 's/ Product Serial *: //p' | head -n1 | sed 's/ *$//'`
+			echo Memory "$MEM_VENDOR" "$MEM_MODEL" "$MEM_SERIAL" ' - ipmi' >> $HOME/debug.log
+			add_component Memory "$MEM_VENDOR" "$MEM_MODEL" "$MEM_SERIAL" ""
+		fi
+	done	
+}
+
+dmi_detect()
+{
+	cat $HOME/dmi.log 2>$DEBUG_TTY | grep -n '^Memory Device$' | sed 's/:Memory Device$//' | while read N; do
+		MEM_INFO=`cat $HOME/dmi.log 2>$DEBUG_TTY | sed -n "$N,+16 p"`
+		MEM_SIZE=`echo "$MEM_INFO" | sed -n 's/^.*Size: //p'`
+		if [ "$MEM_SIZE" != "No Module Installed" ]; then
+			MEM_SPEED=`echo "$MEM_INFO" | sed -n 's/^.*Speed: //p' | sed 's/Unknown//'`
+			MEM_TYPE=`echo "$MEM_INFO" | sed -n 's/^.*Type: //p'`
+			MEM_VENDOR=`echo "$MEM_INFO" | sed -n 's/^.*Manufacturer: //p' | sed 's/Manufacturer[0-9]*//;s/Not Specified//'`
+			MEM_SERIAL=`echo "$MEM_INFO" | sed -n 's/^.*Serial Number: //p'| sed 's/SerNum[0-9]*//;s/Not Specified//'`
+			echo Memory "$MEM_VENDOR" "$MEM_SIZE $MEM_TYPE $MEM_SPEED" "$MEM_SERIAL" ' - dmi' >> $HOME/debug.log 
+			add_component Memory "$MEM_VENDOR" "$MEM_SIZE $MEM_TYPE $MEM_SPEED" "$MEM_SERIAL" ""
+		fi
+	done	
+}
+
+detect_mem_quantity
+DIMMS=`cat $HOME/spd.log 2>$DEBUG_TTY | grep '^Decoding EEPROM: ' || true`
+if [ -n "$DIMMS" ] && [ "$SPD_MEM_COUNT" -ne 0 ] && [ "`i2cdetect 2>&1 | grep -c 'i2c-[0-9]'`" -ne 4 ]; then
+	spd_detect "$DIMMS"
+else
+	DIMMS=`cat $HOME/fru.log 2>$DEBUG_TTY | grep 'cpu[0-9]*.mem[0-9]*.vpd' || true`
+	if [ -n "$DIMMS" ]; then
+		fru_detect "$DIMMS"
+	else
+		if [ -r $HOME/dmi.log ] && [ "$DMI_MEM_COUNT" -ne 0 ]; then
+			dmi_detect
+		else
+			PROC_MEM_SIZE=`cat /proc/meminfo | sed -n 's/MemTotal: *//p' | sed -n 's/ kB$//p'`
+			PROC_MEM_SIZE=$(( $PROC_MEM_SIZE / 1024 ))
+			echo Memory '' "$PROC_MEM_SIZE MB" '' - proc >> $HOME/debug.log
+			add_component Memory '' "$PROC_MEM_SIZE MB" "" ""
+		fi
+	fi
+fi

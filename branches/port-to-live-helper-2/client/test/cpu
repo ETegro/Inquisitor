@@ -1,0 +1,61 @@
+#!/bin/sh -e
+# NAME=CPU burn
+# DESCRIPTION=Basic CPU burn test makes the CPUs execute instructions that rapidly increase processor's temperature in an infinite loop. Test makes special care about used instruction set (to make load as high as possible).
+# DESTROYS_HDD=false
+# IS_INTERACTIVE=false
+# POWEROFF_DURING_TEST=false
+# VERSION=0.1
+# TAGS=cpu,stress
+# DEPENDS=CPU
+# VAR=TESTTIME:int:1800:Total time of CPU testing, sec
+
+. _inq-config-global; . $SHARE_DIR/functions-test
+
+exit_handler()
+{
+	for I in $TMP_DIR/*.pid; do
+		[ -f "$I" ] && stop_background "$I"
+	done
+	[ -d "$TMP_DIR" ] && rmdir "$TMP_DIR"
+}
+
+TMP_DIR=`mktemp -d`
+
+# Detecting burn program
+echo -n 'Detecting burners... '
+if grep -q '^vendor_id.*:.*AuthenticAMD' /proc/cpuinfo; then
+	BURN_PROGRAM=burnK7
+else
+	BURN_PROGRAM=burnP6
+fi
+echo -n $BURN_PROGRAM
+echo_success
+
+# Detect CPU cores quantity
+CPU_QUANTITY=`cpu_quantity`
+
+# Start
+for i in `seq 0 $(($CPU_QUANTITY - 1))`; do
+	echo -n "Starting burn on core $i"
+	start_background "$TMP_DIR/cpuburn$i.pid" "$i" "$BURN_PROGRAM"
+	echo_success
+done
+
+test_promise_time $TESTTIME
+
+echo -n "Burning for $TESTTIME..."
+sleep $TESTTIME
+echo_success
+
+# Stop everything; fail if something is already dead
+for i in `seq 0 $(($CPU_QUANTITY - 1))`; do
+	echo -n "Stopping burn on core $i"
+	if stop_background "$TMP_DIR/cpuburn$i.pid"; then
+		echo_success
+	else
+		echo_failed
+		test_failed "Burner $i died prematurely"
+	fi
+done
+
+test_succeeded

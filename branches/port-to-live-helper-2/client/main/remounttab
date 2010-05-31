@@ -1,0 +1,8 @@
+/mnt
+/media  size=50k
+/tmp
+/var
+/home
+/root
+/etc
+/lib/init/rw

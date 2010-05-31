@@ -1,0 +1,111 @@
+#!/bin/sh -ef
+# NAME=Network interface
+# DESCRIPTION=This test must load every network interface in system and measure it's download speed. Main requirement: all network interfaces must be connected to one common network. Testing sequence is: 1) Detect and remember what interface is default (from what we are booted up (as common)); 2) Consecutively choosing each interface, check if it's MAC address doesn't exist in "exclude macs" test parameter, then either skip it, continuing with another one, or continue to test current inteface; 3) Bring testing interface up, configuring network on it and setting it as a default gateway; 4) Bring down all other interfaces; 5) Get test file from specified URL, measuring download speed; 6) Calculate it's checksum and compare with needed (specified by test parameter). Here, test can fail if an error occurs, otherwise it submits speed benchmarking result and continues to test remaining interfaces; 7) After all interfaces (except the first one) are tested, default interface starts testing: there is no real need in it, when we are booting from network - but it is a simplest way to restore default parameters.
+# DESTROYS_HDD=false
+# IS_INTERACTIVE=false
+# POWEROFF_DURING_TEST=false
+# VERSION=0.2
+# TAGS=net
+# DEPENDS=NIC
+# VAR=TIMEOUT:int:15:Wait timeout while test file retrieving, sec
+# VAR=URL:string:3000/test_file:Relative to server PORT-URL to be fetched and checked
+# VAR=MD5:string:805414334eb1d3ff4fdca507ec82098f:MD5 checksum for checking
+# VAR=EXCLUDE_MAC:string::Exclude NICs with MAC addresses that match this regexp from testing
+
+. _inq-config-global; . $SHARE_DIR/functions-test
+
+exit_handler()
+{
+	# If we succeeded detecting first NIC, IP and gateway detection
+	if [ -n "$FIRST_NIC" -a -n "$LOCAL_IP" -a -n "$GATEWAY" ]; then
+		ifconfig eth${FIRST_NIC} up
+		sleep 5
+		ifconfig eth${FIRST_NIC} inet $LOCAL_IP
+		ip route replace default via $GATEWAY dev eth${FIRST_NIC}
+		sleep 5
+
+		# Link down all other NICs
+		for i in `seq 0 $(( $NIC_QUANTITY - 1 ))`; do
+			if [ $i -ne "$FIRST_NIC" ]; then
+				ip link set eth${i} down
+			else
+				true
+			fi
+		done
+	else
+		true
+	fi
+	[ -f "$TESTFILE" ] && rm $TESTFILE
+}
+
+TESTFILE=`mktemp`
+
+test_nic()
+{
+	local nic_number=$1
+	local md5
+	local udi
+	local mac=`get_nic_mac eth${nic_number}`
+
+	if [ "$mac" = "$EXCLUDE_MAC" ]; then
+		echo "Skipping testing of eth${nic_number} due to MAC exclusion"
+		return 0
+	else
+		true
+	fi
+
+	echo -n "Setting link up interface"
+	ifconfig eth${nic_number} up
+	echo_success
+
+	sleep 5
+	echo -n "Setting IP address"
+	ifconfig eth${nic_number} inet $LOCAL_IP
+	echo_success
+
+	echo -n "Replacing default route"
+	ip route replace default via $GATEWAY dev eth${nic_number}
+	echo_success
+	sleep 5
+
+	for i in `seq 0 $(( $NIC_QUANTITY - 1 ))`; do
+		if [ "$nic_number" -ne $i ]; then
+			echo -n "Setting link down on eth${i}"
+			ip link set eth${i} down
+			echo_success
+		else
+			true
+		fi
+	done
+
+	echo -n "Downloading testing file"
+	speed=`curl -s -w "%{speed_download}" -o $TESTFILE --connect-timeout \
+		$TIMEOUT http://${SERVER}:${URL} | sed 's/\D//g'` ||
+			test_failed "NIC eth${nic_number} (`get_nic_mac eth${nic_number}`) test failed"
+	speed=`perl -e "print int($speed / 1024)"`
+	[ `md5sum -b < $TESTFILE | awk '{print $1}'` = $MD5 ] ||
+		test_failed "NIC eth${nic_number} (`get_nic_mac eth${nic_number}`) test failed"
+	echo_success
+
+	benchmark_submit_float "NIC eth${nic_number} download speed" $speed "KiB/sec"
+}
+
+NIC_QUANTITY=`get_nics_list | wc -l`
+test_succeed_if_no nics
+
+FIRST_NIC=`ip route | grep default | awk '{print $NF}' | sed 's/eth//'`
+[ -z "$FIRST_NIC" ] && test_succeeded "Network is not configured"
+GATEWAY=`ip route | grep default | awk '{print $(NF-2)}'`
+LOCAL_IP=`get_interface_ipaddr $FIRST_NIC`
+
+for i in `seq 0 $(( $NIC_QUANTITY - 1 ))`; do
+	if [ "$FIRST_NIC" -ne $i ]; then
+		echo "Testing NIC eth${i}..."
+		test_nic $i
+	fi
+done
+
+echo "Testing default NIC..."
+test_nic $FIRST_NIC # To restore startup parameters
+
+test_succeeded

@@ -1,0 +1,58 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+       "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+	<meta http-equiv="content-type" content="text/html;charset=UTF-8" />
+	<meta http-equiv="refresh" content="45" /> 
+	<title>Inquisitor: Enterprise - <%= controller.action_name %></title>
+	<%= javascript_include_tag 'prototype' %>
+        <%= javascript_include_tag 'rico/rico' %>
+        <%= javascript_include_tag 'rico/ricoStyles' %>
+        <%= javascript_include_tag 'effects' %>
+	<%= stylesheet_link_tag 'inq' %>
+	<%= stylesheet_link_tag 'shelves' %>
+
+	<% if Time.now().hour > 19 or Time.now().hour < 10 %><style type='text/css'> table.stack td.console { background-image: url('/images/night.png') ! important } </style>
+	<% end %>
+</head>
+<body>
+
+	<%= render :partial => '/layouts/title_bar' %>
+
+	<div id="title_bar"> 
+	</div>
+	
+	<div id="content">
+			<%= yield %>		
+	</div>
+
+	<%= javascript_tag(<<_EOF_
+
+	var z = function () {
+                $$('.hidden_memo').each(function (memo) {
+                        var xy = Element.viewportOffset(memo.up());
+                        var x = xy.left, y = xy.top;
+                        var mh = 48, mv = 20;
+                        var w = memo.getWidth(), h = memo.getHeight();
+                        if(x + mh + w > window.innerWidth) {
+                                memo.style.left = x - w - mh + 'px';
+                        } else {
+                                memo.style.left = x + mh + 'px';
+                        }
+                        if(y + mv + h > window.innerHeight) {
+                                memo.style.top = y - h - mh + 'px';
+                        } else {
+                                memo.style.top = y + mh + 'px';
+                        }
+                })
+	};
+
+	Event.observe(window, 'load', function() {
+		z();
+		Event.observe(window, 'resize', z);	
+	});
+
+_EOF_
+	) %>
+</body>
+</html>

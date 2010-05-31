@@ -1,0 +1,16 @@
+#!/bin/sh
+
+export PATH=/sbin:/usr/sbin:/usr/local/sbin:/bin:/usr/bin:/usr/local/bin:/usr/X11R6/bin
+export HOME=/home
+
+. _inq-config-global
+. $SHARE_DIR/functions
+
+# Here we can safely start init, as this wrapper will be used only in
+# LiveCD version
+. $SHARE_DIR/init
+
+# Make sure temporary directories are there
+mkdir -p $HOME/tmp $TMP $TMPDIR && chmod 1777 $HOME/tmp $TMP $TMPDIR
+
+exec screen -c $SHARE_DIR/inq-live-watchdog.scr

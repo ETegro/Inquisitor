@@ -1,0 +1,119 @@
+#!/bin/sh -e
+# NAME=HDD passthrough
+# DESCRIPTION=HDD passthrough is a stress test that imposes heavy load on main system components. First, it tries to make all HDDs present in the system to appear as separate device nodes - it checks all available RAID controllers, deletes all arrays / disk groups and creates passthrough devices to access individual HDDs if required. Second, it runs badblocks test on every available HDD, running them simulatenously in groups of 8 HDDs by default. Third, it makes a ramdisk filesystem and starts infinite compilation loop in memory, doing so with 16 simultaneous jobs (by default). Test ends successfully after both 1) minimal required stress time passes, 2) all HDDs are checked with badblocks. Test would fail if any bad blocks would be detected on any HDD. Test will usually hang or crash the system on the unstable hardware.
+# DESTROYS_HDD=true
+# IS_INTERACTIVE=false
+# POWEROFF_DURING_TEST=false
+# VERSION=0.3
+# TAGS=hdd,stress
+# DEPENDS=CPU,HDD,Memory,Mainboard,Disk Controller
+# VAR=DISK_GROUP_SIZE:int:8:Number of disks per group for testing
+# VAR=MINIMAL_STRESS_TIME:int:600:Minimal time of stress testing
+# VAR=STRESS_TREE:string:linux-stress.tar.gz:Tarball file containing stress test tree
+# VAR=RAMDISK_SIZE:int:400:Size of memory disk for stress tree building, MB
+# VAR=JOBS:int:16:Number of parallely running jobs during stress test tree compile
+# VAR=SKIP_STRESS_TESTING:bool:false:Do we need to skip stress subtest, perform only badblocks
+# VAR=BADBLOCKS_MODE:string:readonly:Badblocks usage. Can be - read only ("readonly"), non-destructive read and write ("non-destructive"), destructive read and write ("destructive")
+# VAR=BADBLOCKS_BLOCKSIZE:int:1024:Specify the size of blocks in bytes, bytes
+# VAR=BADBLOCKS_PATTERN:string::Specify a test pattern to be read (and written) to disk blocks. See badblocks manual for more info.
+# VAR=BADBLOCKS_BLOCKS_TESTED_AT_ONCE:int:64:Number of blocks which are tested at a time.
+
+. _inq-config-global; . $SHARE_DIR/functions-test
+
+exit_handler()
+{
+	sleep 5
+	if [ -d "$MOUNTPOINT" ]; then
+		cd $HOME/
+		umount -f $MOUNTPOINT >/dev/null 2>&1 || true
+		rmdir $MOUNTPOINT
+	fi
+	[ -f "$ERROR_FILE" ] && rm $ERROR_FILE
+}
+
+MOUNTPOINT=`mktemp -d`
+export ERROR_FILE=`mktemp`
+
+# Checking if this machince has too low amount of memory
+if [ "`memory_amount`" -lt 600 ]; then
+	RAMDISK_SIZE=300
+	MAKE_ARGS="fs"
+	JOBS=4
+else
+	MAKE_ARGS="all"
+fi
+
+badblocks_test()
+{
+	local GROUP_NUMBER=0
+	while raid-wizard-passthrough $DISK_GROUP_SIZE $GROUP_NUMBER; do
+		sleep 10 # Dirty hack again
+		$SHARE_DIR/hdd-badblocks.pl -m "$BADBLOCKS_MODE" \
+					    -b "$BADBLOCKS_BLOCKSIZE" \
+					    -p "$BADBLOCKS_PATTERN" \
+					    -o "$BADBLOCKS_BLOCKS_TESTED_AT_ONCE" \
+					    -i `get_hdds_list` 2>"$ERROR_FILE" || true
+		GROUP_NUMBER=$(( $GROUP_NUMBER + 1 ))
+	done
+
+	current_time=`date "+%s"`
+	if [ $(( $current_time - $START_TIME )) -lt "$MINIMAL_STRESS_TIME" ]; then
+		sleep $(( $MINIMAL_STRESS_TIME - ($current_time - $START_TIME) ))
+	else
+		true
+	fi
+}
+
+stress_test()
+{
+	# Use tmpfs, as it is fully appopriate for our task
+	mount -t tmpfs -o size=${RAMDISK_SIZE}M tmpfs $MOUNTPOINT ||
+		echo "Ramdisk creation failed" > "$ERROR_FILE"
+	
+	# Extract sources for compilation
+	cd "$SHARE_DIR"
+	tar xzf "$STRESS_TREE" -C "$MOUNTPOINT" >$DEBUG_TTY 2>&1 || 
+		echo "Untaring failed" > "$ERROR_FILE"
+	
+	cd $MOUNTPOINT
+	tree_name=`basename "$STRESS_TREE" .tar.gz`
+	cd $tree_name
+	
+	# Is it linux source? We have to touch some files for proper
+	# Makefile working.
+	if echo "$tree_name" | grep '^linux' ; then
+		find . -print | xargs touch >$DEBUG_TTY 2>&1 || true
+		touch .config include/linux/autoconf.h >/dev/null 2>&1 || true
+	fi
+	
+	while [ -d "/proc/$BADBLOCKS_PID" ]; do
+		make clean >$DEBUG_TTY 2>&1 &&
+		make -j $JOBS "$MAKE_ARGS" >$DEBUG_TTY 2>&1 ||
+		echo "Make failed" > "$ERROR_FILE"
+	done
+}
+
+START_TIME=`date "+%s"`
+
+# Run badblocks and compilation processes simultaneously
+badblocks_test &
+BADBLOCKS_PID=$!
+if [ "$SKIP_STRESS_TESTING" = "true" ]; then
+	true
+else
+	stress_test &
+fi
+
+# Wait their completion and check if there are any errors
+wait || true
+if [ -s "$ERROR_FILE" ]; then
+	if grep -q "^Failed HDD:" "$ERROR_FILE"; then
+		for hdd in `sed -n 's/^Failed HDD: \(.*\)$/\1/gp' < "$ERROR_FILE"`; do
+			get_hdd_info $hdd
+		done
+	else
+		test_failed "`sed -n '1p' < $ERROR_FILE`"
+	fi
+else
+	test_succeeded
+fi

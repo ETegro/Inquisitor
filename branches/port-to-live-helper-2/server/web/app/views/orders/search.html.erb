@@ -1,0 +1,100 @@
+<div id="search_form">
+<div class="form_head">Search</div>
+<div class="form_body">
+	<% form_tag  'search', :method => :get do %>
+		<div align="center">
+		<table cellspacing="4" cellpadding="0">
+			<tr>
+				<td><label for="computer_serial">Computer #:</label></td>
+				<td><%= text_field_tag 'computer_serial', nil, :style => 'width: 20em', :value => @computer_serial.to_s %></td>
+				<td><label for="model_id">Model:</label></td>
+				<td><%= select :model, :id, @models, { :selected => @model_id } %></td>
+			</tr>
+			<tr>
+				<td><label for="number">Order #:</label></td>
+				<td><%= text_field_tag 'number', nil, :style => 'width: 20em', :value => @number.to_s %></td>
+				<td><label for="date_start">Date:</label></td>
+				<td>
+					<%= date_field 'date', 'start', :value => @start_date.to_s, :size => '8' %>
+					<span>&ndash;</span>
+					<%= date_field 'date', 'end', :value => @end_date.to_s, :size => '8' %>
+				</td>
+			</tr>
+			<tr>
+				<td><label for="order_customer">Customer:</label></td>
+				<td><%= text_field_with_auto_complete 'order', 'customer', :style => 'width: 20em', :value => @customer.to_s %></td>
+				<td><label for="order_manager">Manager:</label></td>
+				<td><%= text_field_with_auto_complete 'order', 'manager', :style => 'width: 20em', :value => @manager.to_s %></td>
+ 			</tr>
+			<tr>
+				<td>&nbsp;</td>
+				<td>&nbsp;</td>
+				<td><label for="component_model_id">Component model:</label></td>
+				<td><%= select :component_model, :id, @component_models, { :selected => @component_model_id } %></td>
+			</tr>
+		</table>
+		<%= submit_tag 'Search', :style => 'margin: 1em' %>
+		</div>
+	<% end %>
+</div>
+	<div id="results">
+	
+	<% if @orders and @orders.size == 0 %>
+		No orders found
+	<% else %>
+		<table>
+		<% @orders.to_a.each do |ord| %>
+			<tr><td class="order_cell" width="30%">
+				<div class="order_number">
+					<a href="<%= url_for(:action => 'show', :controller => 'orders', :id => ord) %>">
+						<%=h ord.buyer_order_number %>
+					</a>
+				</div>
+				<div class="title">
+					<a href="<%= url_for(:action => 'show', :controller => 'orders', :id => ord) %>">
+						<%=h ord.title.gsub(/\//, ' / ').gsub(/\\/, ' \ ') %>
+					</a>
+				</div>
+				<% if ord.order_stages.first and ord.order_stages.first.start %>
+					<div class="date">
+						<a href="<%= url_for(:action => 'show', :controller => 'orders', :id => ord) %>">
+							<%= ord.order_stages.first.start.strftime('%Y-%m-%d') %>
+						</a>
+					</div>
+				<% end %>
+				<div class="customer" title="<%=h ord.customer %>">
+					<a href="<%= url_for(:action => 'show', :controller => 'orders', :id => ord) %>">
+						<%=h truncate(ord.customer, 50) %>
+					</a>
+				</div>
+			</td>
+			<td class="computer_cell" width="70%">
+				<% ord.computers.each { |c| %>
+					<%= link_to c.serial_no, :controller => 'computers', :action => 'show', :id => c.id %>
+				<% } %>
+			</td>
+			</tr>
+		<% end %>
+		</table>
+	<% end %>
+	<% if @computers and @computers.size > 0 %>
+		<p>Computers without orders:</p>
+		<table>
+		<% @computers.each { |c| %>
+			<tr>
+			<td class="order_cell" width="30%">
+<% if c.computer_stages.first and c.computer_stages.first.start %>
+				<div class="date"><%= c.computer_stages.first.start.strftime('%Y-%m-%d') %></div>
+<% end %>
+				<%=h c.model.name %>
+			</td>		
+			<td class="computer_cell" width="70%">
+				<%= link_to c.serial_no, :controller => 'computers', :action => 'show', :id => c.id %>
+			</td>
+			</tr>
+		<% } %>
+		</table>
+	<% end %>
+	
+	</div>
+</div>

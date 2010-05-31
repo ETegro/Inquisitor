@@ -1,0 +1,22 @@
+#!/bin/sh -e
+# ID=2
+# NAME=CPU temperature (sensors)
+# DESCRIPTION=This monitoring uses sensors for getting CPU's temperature.
+# MEASUREMENT=temperature
+
+. _inq-config-global; . $SHARE_DIR/functions-monitoring
+[ -n "$PERIOD" ] || PERIOD=30
+
+while true; do
+	sensors -A 2>$DEBUG_TTY | while read sensor; do
+		# Core temperature
+		temp=`echo "$sensor" | sed -n 's/^Core\([0-9]*\) Temp:.*+\([0-9\.]*\) C.*$/\1 \2/p'`
+		[ -z "$temp" ] || monitoring_submit $temp 0 # Zero is precaution for an empty value
+
+		# temp* temperatures
+		temp=`echo "$sensor" | sed -n 's/^temp\([0-9]*\):.*+\([0-9\.]*\) C .*$/\1 \2/p' | awk '{print $1, $2}'`
+		[ -z "$temp" ] || monitoring_submit $temp 0 # Zero is precaution for an empty value
+	done
+
+	sleep $PERIOD
+done

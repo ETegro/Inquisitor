@@ -1,0 +1,40 @@
+<table id="computer_organizational">
+<tr><th>Serial:</th><td><%=h @computer.id %></td></tr>
+<tr><th>Model:</th><td><%=h @computer.model.name %></td></tr>
+<tr><th>Customer:</th><td><%=h @computer.customer.name %></td></tr>
+<tr><th>Doc no:</th><td><%=h @computer.doc_no %></td></tr>
+<tr><th>Shelf:</th><td><%=h @computer.shelf %></td></tr>
+</table>
+
+<% if @testing then
+	t = @testing %>
+<% if t.test_start and t.test_end then %>
+Testing <%=h t.test_start %> - <%=h t.test_end %> (length: <%=h (t.test_end - t.test_start) %>), using profile "<%=h t.profile_id %>"
+<% end %>
+
+<table id="computer_components">
+<tr>
+<th>Device</th>
+<th>Full model name</th>
+<th>Serial</th>
+<th>Short name</th>
+<% t.components.each { |c| %>
+<tr>
+<td><%=h c.model.group.name %></td>
+<td><%=h c.model.vendor %> <%=h c.model.name %></td>
+<td><%=h c.serial %>
+<td><%=h c.model.vendor %> <%=h c.model.short_name %></td>
+</tr>
+<% } %>
+</table>
+
+<table id="testing_stages">
+<% t.testing_stages.each { |ts| %>
+<tr>
+<td><%=h ts.stage %></td>
+<td><% if ts.end and ts.start %><%=h ts.end - ts.start %><% end %></td>
+</tr>
+<% } %>
+</table>
+
+<% end %>

@@ -1,0 +1,54 @@
+== v1.4
+
+* Support for post-build reconfiguration of proprietary CLIs and
+supporting modules. This allows Einarc to be supplied via usual binary
+packaging methods (rpm/deb): proprietary CLIs can be installed after
+binary package installation using special setup tool "einarc-install".
+* Experimental support for hardware RAID autodetection in both
+build-time (configure) and run-time (einarc-install).
+
+== v1.3
+
+* Support for 3ware / AMCC controllers by Andras Horvath.
+* Full read/write support of Linux software RAIDs.
+* Updated all proprietary utilities URLs, pumped up version numbers,
+fixed wrapper regular expressions to support new versions of CLIs.
+* Added new calculated fields in adapter_info: PCI product/subproduct
+and vendor/subvendor IDs. These allow precise identification of PCI
+devices related to adapters shown by Einarc.
+* Fuller BBU support for Adaptec adapters.
+* Multiple stability and build fixes (Makefile now supports parallel
+execution with "make -j").
+
+== v1.2
+
+* Support for new RAID devices: newer Adaptec adapters using arcconf.
+* New objects "bbu" and "firmware" are introduced: now it's possible to
+get information about BBU and read/write firmware to supported adapters.
+* More strict "adapter info" report: it outputs serial number and tries
+to pinpoint a particular adapter using PCI IDs, if possible.
+* Updates for existing devices:
+** aaccli: now it downloads and uses later, more acceptable version, not
+linked against arts library. Note, however, that
+Adaptec_Storage_Manager-Linux_v2.10.00 is a huge ~36M download.
+** megacli: updated version to 1.01.27.
+* Multiple stability, metadata and rare occurance fixes for all modules.
+* Improved build system.
+* "raid-wizard-passthrough" can be used to handle smaller groups of HDDs
+(not all available devices).
+
+== v1.1
+
+* Added documentation in package
+* Brand-new configure: now everything can be controlled from
+command-line parameters, individual modules can be enabled/disabled at
+compile time.
+* Updated download/build mechanism: it asks for license agreement
+interactively. For non-interactive builds, just touch proprietary/agreed
+file.
+* Bugfixes in lsi_megarc, adaptec_aaccli modules
+* Compatibility with older Ruby (<1.8.6)
+
+== v1.0
+
+* First public release

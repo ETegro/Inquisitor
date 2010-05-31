@@ -1,0 +1,43 @@
+<%= render :partial => '/layouts/progress_bar' %>
+
+<table style="border-spacing: 0.5em; margin-left: 4.1em">
+
+<tr>
+<td class="panel" style="vertical-align: top">
+
+<table class="bordered">
+<tr><th colspan="2">Details</th></tr>
+<tr><td>Title:</td><td><%=h @order.title %></td></tr>
+<tr><td>Code:</td><td><%= @order.code %></td></tr>
+<tr><td>Customer:</td><td><%= link_to @order.customer, :action => 'search', :order => { :customer => @order.customer }, :no_redirect => true %></td></tr>
+<tr><td>Manager:</td><td><%=h @order.manager %></td></tr>
+<tr><td>Buyer order #:</td><td><%=h @order.buyer_order_number %></td></tr>
+<tr><td>Mfg task #:</td><td><%=h @order.mfg_task_number %></td></tr>
+<tr><td>Mfg report #:</td><td><%=h @order.mfg_report_number %></td></tr>
+</table>
+</td>
+
+<% if @order.order_lines.size > 0 %>
+<td style="vertical-align: top">
+<table class="bordered">
+<tr><th>Item</th><th>Qty</th></tr>
+<%	@order.order_lines.each { |l| %>
+<tr><td><%=h l.name %></td><td style="text-align: right"><%=h l.qty %></td></tr>
+<%	} %>
+</table>
+</td>
+<% end %>
+
+</tr>
+
+<tr>
+
+<% if @computers.size > 0 %>
+	<td colspan="2"><%= render :partial => 'list_computers' %></td>
+<% elsif logged_in? and current_person.admin? and @computers.size == 0 and @order.order_stages[-1] and @order.order_stages[-1].stage == 'acceptance' %>
+	<td colspan="2" class="panel"><%= render :partial => 'create_computers' %></td>
+<% end %>
+
+</tr>
+
+</table>

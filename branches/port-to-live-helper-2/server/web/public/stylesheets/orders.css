@@ -1,0 +1,160 @@
+/* Orders */
+
+.order_staging {
+        border-collapse: collapse;
+	width: 100%;
+}
+
+.order_staging td {
+        border-right: 2px dotted #845905;
+}
+
+.order_staging th {
+        background: #845905;
+        color: white;
+        padding: 0.5em;
+}
+
+.order_cell {
+        background: #f0dfbd;
+        border-right: none !important;
+        margin-left: 2em;
+}
+
+.order_cell a {
+        display: block;
+        text-decoration: none;
+        color: black;
+}
+
+.order_cell .order_number {
+	display: block;
+        float: left;
+        width: 45px;
+        min-height: 38px;
+        height: 38px;
+        text-indent: 4px;
+        padding-top: 4px;
+        font-size: 1.3em;
+        margin-right: 0.5em;
+        background: url(/img/order.png);
+}
+
+.order_cell .customer {
+	display: block;
+	clear: left;
+}
+
+.order_cell .timer {
+	display: block;
+        text-align: right;
+        font-style: italic;
+        padding-right: 0.5em;
+}
+
+.order_cell .computers {
+	display: block;
+	float: left;
+}
+
+h1 {
+        background: #845905;
+        color: white;
+	font-size: 1em;
+	padding: 0.2em 0.5em;
+	margin: 0px;
+}
+
+.panel {
+        background: #f0dfbd;
+	border: none;
+	margin: 0px;
+	vertical-align: top;
+}
+
+.panel .content {
+	padding: 0.5em;
+}
+
+table.bordered {
+	width: 100%;
+	border: 4px solid #845905;
+	border-collapse: collapse;
+}
+
+table.bordered th {
+        background: #845905;
+        color: white;
+	padding: 0em 0.5em;
+	margin: 0px;
+}
+
+table.bordered td {
+	border-right: 1px #845905 dotted;
+	border-left: 1px #845905 dotted;
+	background: #f0dfbd;
+	padding: 0.1em 0.5em;
+}
+
+#composite_bar td {
+	vertical-align: top;
+}
+
+#trident_bar table {
+	margin-top: 1em;
+	margin-bottom: 1em;
+	border-collapse: collapse;
+	border: 0px;
+	padding: 0px;
+}
+
+#trident_bar th, #trident_bar td {
+	vertical-align: middle;
+	text-align: center;
+	height: 2em;
+	min-width: 2em;
+}
+
+#trident_bar th span {
+	display: none;
+	color: white;
+}
+
+#trident_bar th:hover {
+	background-color: #559F7D;	 
+}
+
+#trident_bar th:hover span {
+	display: inline;
+}
+
+#trident_bar th {
+	background-repeat: no-repeat;
+	background-position: 6px 50%;
+	text-indent: 28px;	
+}
+
+#trident_bar td {
+	margin: 0px;
+	padding: 0px;
+	padding-left: 0.2em;
+	padding-right: 0.1em;
+	min-width: 2em;
+	height: 1.5em;
+}
+
+#trident_bar tr.computer_stage_row td {
+	padding-bottom: 0.2em;
+}
+
+#trident_bar td div {
+	border-width: 1px;
+	border-style: solid;
+	width: 100%;
+	height: 100%;
+}
+
+#trident_bar tr.dummy td {
+	font-size: 0px;
+	height: 11px;
+}

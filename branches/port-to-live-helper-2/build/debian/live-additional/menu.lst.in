@@ -1,0 +1,17 @@
+default 0
+timeout 30
+splashimage /boot/grub/splash.xpm.gz
+
+title		Inquisitor $INQ_VERSION LiveCD $DEB_TARGET
+kernel		/live/vmlinuz-$KERNEL_VERSION boot=live noautologin nolocales hostname=inq union=aufs
+initrd		/live/initrd.img-$KERNEL_VERSION
+
+title		Inquisitor $INQ_VERSION LiveCD $DEB_TARGET (fail-safe mode)
+kernel		/live/vmlinuz-$KERNEL_VERSION boot=live noautologin nolocales hostname=inq union=aufs noapic noapm nodma nomce nolapic nosmp vga=normal
+initrd		/live/initrd.img-$KERNEL_VERSION
+
+title		Other:
+root
+
+title		Memtest86+
+kernel		/live/memtest

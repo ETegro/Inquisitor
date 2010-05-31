@@ -1,0 +1,157 @@
+#!/bin/sh -ef
+# NAME=USB GPRS/EDGE/3G Modem Dialup
+# DESCRIPTION=Test cellular modem, connected via USB. This test tries to initialize the GPRS/EDGE/3G session using pppd with device DEV at SPEED bps, setting device's access point to APN, authenticating using username PPPD_USERNAME, selecting CHAP/PAP protocol as suggested by provider's server. You must include a relevant login/password entry in either /etc/ppp/pap-secrets or /etc/ppp/chap-secrets file for authentication to work. This test tries to reconnect pppd sessions up to PPPD_TRIES time. After successful start of pppd session, it tries to download file at URL up to DOWNLOAD_TRIES times, making sure that download takes up to DOWNLOAD_MAX_TIME seconds. Downloaded file's md5 checksum is matched MD5 string. After downloading, it tries to upload a file UPLOAD_FILE up to UPLOAD_TRIES times at UPLOAD_URL, making sure that upload takes no more than UPLOAD_MAX_TIME seconds. Both download and upload speeds are reported as benchmark results.
+# DESTROYS_HDD=false
+# IS_INTERACTIVE=false
+# POWEROFF_DURING_TEST=false
+# VERSION=0.2
+# TAGS=usb,gprs
+# DEPENDS=USB, GPRS Modem
+# VAR=DEV:string:/dev/ttyUSB0:Name of device to test
+# VAR=PPPD_TRIES:int:4:Number of tries to bring pppd up
+# VAR=URL:string:img-fotki.yandex.ru/getx/10/photoface.359/sevastopol-foto_34661_L:URL to download (without http)
+# VAR=MD5:string:ca530886183b06d0047e0655537327aa:MD5 of downloaded file
+# VAR=DOWNLOAD_TRIES:int:3:Number of tries to download the file
+# VAR=DOWNLOAD_MAX_TIME:int:60:Timeout for the whole download, sec
+# VAR=UPLOAD_FILE:string:/etc/ld.so.cache:File to upload
+# VAR=UPLOAD_TRIES:int:3:Number of tries to upload the file
+# VAR=UPLOAD_MAX_TIME:int:120:Timeout for file upload, sec
+# VAR=UPLOAD_URL:string::URL to upload (without http)
+# VAR=SPEED:int:115200:Line speed
+
+. _inq-config-global; . $SHARE_DIR/functions-test
+
+PID_DIR="/var/run"
+
+exit_handler()
+{
+	kill_pppd
+	[ -d "$TMP_DIR" ] && rm -rf "$TMP_DIR"
+}
+
+kill_pppd()
+{
+	if [ -r "$TMP_DIR/pppd.lock" ]; then
+		echo -n "Killing PPP daemon..."
+		kill -KILL `sed -n '1p' < $PID_DIR/ppp-$PPPD_NAME.pid` >/dev/null 2>&1 || true
+		echo_success
+		sleep 5
+
+		rm -f $TMP_DIR/pppd.lock
+	else
+		true
+	fi
+}
+					
+# Create temporary directory
+TMP_DIR=`mktemp -d`
+PPPD_NAME=$RANDOM
+
+echo -n "Retrieving current cellular network operator... "
+chat -Vs '' AT OK-AT-OK AT+COPS? OK <$DEV >$DEV 2>$TMP_DIR/cops ||
+	test_failed "Unable to determine network operator"
+operator="`sed -n 's/^+COPS: .*"\(.*\)"$/\1/p' < $TMP_DIR/cops`"
+echo -n "$operator"
+echo_success
+
+# We need to replace this awful code
+case "$operator" in
+	"MTS")
+		echo "Be sure to have \"mts * mts *\" in chap-secrets"
+		echo "Be sure to have \"mts * mts\" in pap-secrets"
+		APN="internet.mts.ru"
+		PPPD_USERNAME="mts"
+		;;
+	"Megafon")
+		echo "Be sure to have \"gdata * gdata *\" in chap-secrets"
+		echo "Be sure to have \"gdata * gdata\" in pap-secrets"
+		APN="internet"
+		PPPD_USERNAME="gdata"
+		;;
+	"Bee Line GSM")
+		echo "Be sure to have \"beeline * beeline *\" in chap-secrets"
+		echo "Be sure to have \"beeline * beeline\" in pap-secrets"
+		APN="internet.beeline.ru"
+		PPPD_USERNAME="beeline"
+		;;
+esac
+
+MODEM_INIT="AT+CGDCONT=1,\"IP\",\"$APN\" OK"
+PHONE="*99***1#"
+
+TRIES=0
+while [ "$TRIES" -lt "$PPPD_TRIES" ]; do
+	TRIES=$(( $TRIES + 1 ))
+
+	# Try to stop pppd if it is already running
+	kill_pppd
+	if pppd \
+		connect 'chat -v ABORT "NO DIALTONE" ABORT "NO CARRIER" ABORT BUSY "" '"$MODEM_INIT"' ATDP'$PHONE' "CONNECT" ;' \
+		crtscts \
+		modem \
+		debug \
+		name $PPPD_USERNAME \
+		linkname $PPPD_NAME \
+		updetach \
+		noauth \
+		noccp \
+		usepeerdns \
+		defaultroute \
+		replacedefaultroute \
+		noipdefault \
+		$DEV $SPEED; then
+		touch $TMP_DIR/pppd.lock
+	else
+		echo "PPP connect failed after try $TRIES"
+		continue
+	fi
+
+	sleep 5
+	# Downloading
+	echo -n 'Downloading file...'
+	curl --retry "$DOWNLOAD_TRIES" \
+	     --max-time "$DOWNLOAD_MAX_TIME" \
+	     -o "$TMP_DIR/download" \
+	     -w '%{speed_download}' \
+	     "http://$URL" >$TMP_DIR/report && echo_success || continue
+
+	# Speed reporting
+	benchmark_submit_float 'Average download speed' "`cat $TMP_DIR/report`" "B/sec"
+
+	# MD5 check
+	echo -n 'Checking MD5 sum... '
+	echo "$MD5  $TMP_DIR/download" >$TMP_DIR/checkfile
+	md5sum -c $TMP_DIR/checkfile && echo_success || continue
+
+	# Uploading
+	[ -r "$UPLOAD_FILE" ] || {
+		print_red_message "Cannot open $UPLOAD_FILE; using default file for upload test"
+		UPLOAD_FILE=/etc/ld.so.cache
+	}
+
+	#echo 'Uploading file'
+	curl --retry "$UPLOAD_TRIES" \
+	     --max-time "$UPLOAD_MAX_TIME" \
+	     -F file=@$UPLOAD_FILE \
+	     -o $TMP_DIR/md5 \
+	     -w '%{speed_upload}' \
+	     "http://$UPLOAD_URL" >$TMP_DIR/report && echo_success || continue
+
+	# Speed reporting
+	benchmark_submit_float 'Average upload speed' "`cat $TMP_DIR/report`" "B/sec"
+
+	# MD5 check
+	echo -n 'Checking uploaded MD5 sum...'
+	echo "`cat $TMP_DIR/md5`  $UPLOAD_FILE" >$TMP_DIR/checkfile
+	md5sum -c $TMP_DIR/checkfile && echo_success || continue
+
+	# Finish test successfully
+	break
+done
+
+if [ -r "$TMP_DIR/checkfile" ]; then
+	benchmark_submit_string "Network operator" "$operator" "" || true
+	test_succeeded
+else
+	test_failed
+fi

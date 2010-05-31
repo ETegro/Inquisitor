@@ -1,0 +1,94 @@
+#!/bin/sh -e
+
+. _inq-config-global
+. $SHARE_DIR/functions
+. $SHARE_DIR/communication
+export PATH
+if [ -r $SHARE_DIR/init ] && ! [ -r /proc/cpuinfo ]; then
+	. $SHARE_DIR/init
+fi
+
+# ===========================================================================
+# Detects
+# ===========================================================================
+
+print_red_message 'Starting detects'
+inq-detect
+print_green_message 'Detects finished'
+
+# ===========================================================================
+# Self-identification
+# ===========================================================================
+
+print_red_message 'Starting self-identification'
+COMPUTER_ID=`inq-self-id`
+[ -n "$COMPUTER_ID" ] || fatal_failure 'Self-identification'
+export COMPUTER_ID
+
+# Reporting IP-address to the server
+publish_my_ip || fatal_failure 'IP-address update'
+
+# ===========================================================================
+# Start logging
+# ===========================================================================
+
+hostname c$COMPUTER_ID
+service_start syslog-ng || :
+
+# ===========================================================================
+# Set time
+# ===========================================================================
+
+echo -n 'Trying set local time'
+if [ -n "$NTP_SERVER" ]; then
+	if /usr/sbin/ntpdate $NTP_SERVER >$DEBUG_TTY && /sbin/hwclock --systohc; then
+		echo_success
+	else
+		echo_failure
+	fi
+else
+	echo -n ' (no ntp server configured)'
+	echo_skipped
+fi
+
+# ===========================================================================
+# Start watchdog, if available
+# ===========================================================================
+
+watchdog_start
+
+# ===========================================================================
+# Submit configuration by REST
+# ===========================================================================
+
+submit_components $HOME/components.xml
+
+# ===========================================================================
+# Starting monitorings
+# ===========================================================================
+
+print_red_message 'Starting monitorings'
+inq-monitoring
+print_green_message 'Monitorings were started'
+
+# ===========================================================================
+# Starting software detects
+# ===========================================================================
+
+print_red_message 'Starting software detects'
+inq-software-detect
+print_green_message 'Software detects finished'
+
+# ===========================================================================
+# Run all tests
+# ===========================================================================
+
+plan_test_script
+. $HOME/test_script
+
+# We completed all tests
+print_green_message "================"
+print_green_message "TESTING FINISHED"
+print_green_message "================"
+
+testing_finished

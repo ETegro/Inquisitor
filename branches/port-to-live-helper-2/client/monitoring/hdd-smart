@@ -1,0 +1,18 @@
+#!/bin/sh -e
+# ID=5
+# NAME=HDD temperature
+# DESCRIPTION=This monitoring uses hard drive's SMART to get its temperature.
+# MEASUREMENT=temperature
+
+. _inq-config-global; . $SHARE_DIR/functions-monitoring
+[ -n "$PERIOD" ] || PERIOD=60
+
+while true; do
+	I=0
+	for device in `get_hdds_list`; do
+		VALUE=`smartctl -d ata -A $device | grep 'Temperature_Celsius' | cut -c88-`
+		[ -z "$VALUE" ] || monitoring_submit $I $VALUE
+		I=$(($I+1))
+	done
+	sleep $PERIOD
+done

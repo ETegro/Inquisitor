@@ -1,0 +1,51 @@
+#!/bin/sh
+# server/watchdog/watchdog - A part of Inquisitor project
+# Copyright (C) 2004-2009 by Iquisitor team 
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+DB_USER="inq"
+DB_PASSWORD="inq"
+DB_HOST="localhost"
+DB_NAME="inq"
+
+while true; do
+	cat <<__EOF__ | mysql -u$DB_USER -p$DB_PASSWORD -h$DB_HOST $DB_NAME
+UPDATE computer_stages
+SET end=NOW()
+WHERE id IN (
+	SELECT id FROM (
+		SELECT DISTINCT cs.id AS id, MIN(ts.result) AS res1, MAX(ts.result) AS res2 FROM computers c
+			INNER JOIN testings t ON c.id=t.computer_id
+			INNER JOIN testing_stages ts ON ts.testing_id=t.id
+			INNER JOIN computer_stages cs ON c.id=cs.computer_id
+			WHERE cs.stage='testing' AND cs.end IS NULL AND t.test_end IS NOT NULL
+			GROUP BY ts.testing_id
+			HAVING res1=1 AND res2=1
+	) AS t1
+);
+
+UPDATE computers c
+	INNER JOIN testings t ON c.id=t.computer_id
+	INNER JOIN testing_stages ts ON t.id=ts.testing_id
+SET ts.end=NOW(), ts.result=3, t.test_end=NOW()
+WHERE TIME_TO_SEC(TIMEDIFF(NOW(), last_ping)) > 120 AND t.test_end IS NULL AND ts.end IS NULL AND ts.result=0;
+
+UPDATE computers c
+	INNER JOIN testings t ON c.id=t.computer_id
+SET t.test_end=NOW()
+WHERE TIME_TO_SEC(TIMEDIFF(NOW(), last_ping)) > 120 and t.test_end IS NULL;
+__EOF__
+	sleep 45
+done

@@ -1,0 +1,65 @@
+#!/bin/sh
+# Obligatory functions to process before every test.
+
+. _inq-config-global
+. $SHARE_DIR/functions
+. $SHARE_DIR/communication
+
+if [ -z "$PLANNER" ]; then
+	# Running in free state; need to get all variables for the test
+	. $SHARE_DIR/functions-test-tui
+else
+	# Called by scheduler; will use handle #4 to output test data to
+	# be correctly grabbed by run_test
+
+	# We need to fillup all test variables with default values if
+	# no specified by user (profile)
+	for test_var in `sed -n 's/^# *VAR=\(.*\):.*:\(.*\):.*$/\1:\2/p' < $0 | sed "s/ /___/g"`; do
+		varname=`echo $test_var | awk -F: '{print $1}'`
+		varvalue=`echo $test_var | awk -F: '{print $2}' | sed "s/___/ /g"`
+		if set | grep "^${varname}="; then
+			# Variable is already set
+			true
+		else
+			eval "$varname=\"$varvalue\""
+		fi
+	done
+
+	execute_after_test()
+	{
+		cat >&5 <<EOF
+#!/bin/sh
+. _inq-config-global
+. $SHARE_DIR/functions
+. $SHARE_DIR/communication
+cd $SHARE_DIR/firmwares # As it is commonly used
+
+$@
+EOF
+	}
+
+	test_succeeded()
+	{
+		if [ -n "$@" ]; then
+			echo "$@" >&4 || echo "$@" >&2
+		fi
+		exit 0
+	}
+
+	test_failed()
+	{
+		if [ -n "$@" ]; then
+			echo "$@" >&4 || echo "$@" >&2
+		fi
+		exit 1
+	}
+fi
+
+_exit_handler()
+{
+	local rc=$?
+	trap - EXIT
+	type exit_handler >$DEBUG_TTY 2>&1 && exit_handler || true
+	exit $rc
+}
+trap _exit_handler HUP PIPE INT QUIT TERM EXIT

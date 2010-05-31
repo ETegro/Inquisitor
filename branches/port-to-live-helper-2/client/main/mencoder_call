@@ -1,0 +1,70 @@
+#!/bin/sh -e
+
+SOURCE=$1
+DESTINATION=$2
+PRESET=$3
+TWOPASS=$4 # true or false
+SCALE=$5 # width:height
+BITRATE=$6
+THREADS=$7
+
+create_benchmark_results()
+{
+	user_time=`sed -n 's/^user \(.*\)$/\1/p' < time.result`
+	sys_time=`sed -n 's/^sys \(.*\)$/\1/p' < time.result`
+	frames=`grep "^Video stream:" < mencoder.result | awk '{print $(NF-1)}'`
+	fps=`perl -e "print int($frames / ($user_time + $sys_time))"`
+
+	echo "$user_time $sys_time $fps"
+}
+
+# Make command line options for mencoder x264 encoding based on preset
+# Preset is taken from examples in MPlayerHQ encoding documentation
+case $PRESET in
+	"lq")
+		X264OPTS="subq=4:bframes=2:b_pyramid=normal:weight_b"
+		;;
+	"hq")
+		X264OPTS="subq=5:8x8dct:frameref=2:bframes=3:b_pyramid=normal:weight_b"
+		;;
+	"vhq")
+		X264OPTS="subq=6:partitions=all:8x8dct:me=umh:frameref=5:bframes=3:b_pyramid=normal:weight_b"
+		;;
+esac
+
+X264OPTS="${X264OPTS}:bitrate=$BITRATE:threads=$THREADS"
+
+# Is it two-pass encoding or not?
+# Run transcoding after detection
+if [ "$TWOPASS" = "true" ]; then
+	`which time` -p -o time.result \
+		mencoder -nosound \
+			 -ovc x264 \
+			 -vf scale=$SCALE \
+			 -x264encopts ${X264OPTS}:pass=1 \
+			 -o $DESTINATION $SOURCE 2>&1 | tee $DEBUG_TTY > mencoder.result
+	create_benchmark_results
+
+	# We need only created logfile
+	rm $DESTINATION
+
+	`which time` -p -o time.result \
+		mencoder -nosound \
+			 -ovc x264 \
+			 -vf scale=$SCALE \
+			 -x264encopts ${X264OPTS}:pass=2 \
+			 -o $DESTINATION $SOURCE 2>&1 | tee $DEBUG_TTY > mencoder.result
+	create_benchmark_results
+else
+	`which time` -p -o time.result \
+		mencoder -nosound \
+			 -ovc x264 \
+			 -vf scale=$SCALE \
+			 -x264encopts $X264OPTS \
+			 -o $DESTINATION $SOURCE 2>&1 | tee $DEBUG_TTY > mencoder.result
+	create_benchmark_results
+fi
+
+[ ! -e divx2pass.log ] || rm divx2pass.log
+rm mencoder.result
+rm time.result
