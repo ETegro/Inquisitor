@@ -64,6 +64,7 @@ PRINT #{copies},1\n"
 		if @str
 			File.open('/tmp/bar.tmp', 'w'){ |f| f.puts(@str) }
 			`</tmp/bar.tmp ssh #{host} "sudo  cat >#{dev}"`
+			`cp /tmp/bar.tmp /tmp/foo`
 		end
 	end	
 end
