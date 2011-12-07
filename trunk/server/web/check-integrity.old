@@ -1,0 +1,32 @@
+#!/usr/bin/env ruby
+
+def pluralize(x)
+	if x == 'person' then
+		'people'
+	else
+		x + 's'
+	end
+end
+
+Dir.open('app/models').each { |n|
+	next unless n =~ /\.rb$/
+	f = File.open("app/models/#{n}")
+	s = f.gets
+	t1 = nil
+	if s =~ /class (.*?) /
+		t1 = $1
+		pt1 = pluralize(t1)
+	else
+		puts "WARNING: bad file #{n}"
+		next
+	end
+	f.each_line { |l|
+		case l
+		when /belongs_to :(.*?)$/
+			t2 = $1
+			pt2 = pluralize(t2)
+			puts "SELECT * FROM #{pt1} LEFT JOIN #{pt2} ON #{pt1}.id=#{pt2}.#{t1}_id WHERE #{pt2}.id IS NULL"
+		end
+	}
+	f.close
+}
