@@ -71,14 +71,23 @@ class StatisticsController < ApplicationController
 	end
 
 	def rma
-		@rma_stat = Model.find_by_sql("Select m.*, count(c.id) total, count(s1.computer_id) checking, count(s2.computer_id) testing, avg(s1.d1) cavg, avg(s2.d2) tavg from models as m join computers as c on m.id = c.model_id left join ( Select computer_id, datediff(end, now() - interval 3 year) d1 from computer_stages where stage = \'checking\' group by computer_id having min( end) > now() - interval 3 year ) as s1 on c.id = s1.computer_id left join ( Select computer_id, datediff(end, now() - interval 3 year) d2 from computer_stages where stage = \'testing\' and computer_id not in ( Select computer_id from computer_stages where stage = \'checking\') group by computer_id having min( end) > now() - interval 3 year ) as s2 on c.id=s2.computer_id group by m.id order by m.name;")
-	end
+	@rma_stat = Model.find_by_sql("Select m.*, count(c.id) total, count(s1.computer_id) checking, count(s2.computer_id) testing, avg(s1.d1) cavg, avg(s2.d2) tavg from models as m join computers as c on m.id = c.model_id left join ( Select computer_id, datediff(end, now() - interval 3 year) d1 from computer_stages where stage = \'checking\' group by computer_id having min( end) > now() - interval 3 year ) as s1 on c.id = s1.computer_id left join ( Select computer_id, datediff(end, now() - interval 3 year) d2 from computer_stages where stage = \'testing\' and computer_id not in ( Select computer_id from computer_stages where stage = \'checking\') group by computer_id having min( end) > now() - interval 3 year ) as s2 on c.id=s2.computer_id group by m.id order by m.name;")
+        end
 
 	def assembly
 		get_dates
-		@assembly_stat = ComputerStage.find_by_sql("Select DATE(cs.end) ddmmyy, COUNT(cs.end) comp_count, SUM(m.complexity)/60.0 hours, COUNT(DISTINCT(csa.person_id)) asmbl_count, SUM(m.complexity)/(60.0*8*COUNT(DISTINCT(csa.person_id))) coef from computer_stages AS cs JOIN computers AS c ON cs.computer_id=c.id JOIN models AS m on c.model_id=m.id JOIN computer_stages AS csa on cs.computer_id=csa.computer_id where cs.stage=\"checking\" AND csa.stage=\"assembling\" AND cs.start > \'#{@from_date}\' AND cs.end < \'#{@to_date}\' GROUP BY DATE(cs.end);")
-		@k = 0
-		@assembly_stat.each { |i| @k += i.coef.to_f if i.coef.to_f > 1}
+                @assembly_stat = ComputerStage.find_by_sql("Select DATE(cs.end) ddmmyy, COUNT(cs.end) comp_count, SUM(m.complexity)/60.0 hours, COUNT(DISTINCT(csa.person_id)) asmbl_count, SUM(m.complexity)/(60.0*8*COUNT(DISTINCT(csa.person_id))) coef, GROUP_CONCAT(DISTINCT(p.display_name)) asmbls from computer_stages AS cs JOIN computers AS c ON cs.computer_id=c.id JOIN models AS m on c.model_id=m.id JOIN computer_stages AS csa on cs.computer_id=csa.computer_id join people p on csa.person_id=p.id where cs.stage=\"checking\" AND csa.stage=\"assembling\" AND cs.start > \'#{@from_date}\' AND cs.end < \'#{@to_date}\' GROUP BY DATE(cs.end);")
+                @k = 0
+		@assemblers = {}
+                @assembly_stat.each do |i|
+                         if i.coef.to_f > 1
+                                c = i.coef.to_f - 1
+                                 @k += (i.coef.to_f-1)
+                                 i.asmbls.split(',').each { |a| @assemblers.has_key?(a) ? @assemblers[a] += c : @assemblers[a] = c }
+                         end
+                 end
+
 	end
 
 end
+

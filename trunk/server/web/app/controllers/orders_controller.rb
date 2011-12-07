@@ -328,6 +328,7 @@ class OrdersController < ApplicationController
 			:component_model_id => @component_model_id,
 			:start_date => @start_date,
 			:end_date => @end_date,
+			:component_serial => "%#{@component_serial }%"
 		}
 
 		cond = []
@@ -340,7 +341,7 @@ class OrdersController < ApplicationController
 		cond << '(order_stages.start <= :end_date OR computer_stages.start <= :end_date)' if @end_date
 
 		if @component_serial
-			@computers_by_component_serial = Computer.find_by_sql("SELECT DISTINCT(computers.id) FROM computers INNER JOIN testings ON testings.computer_id=computers.id JOIN components ON components.testing_id=testings.id WHERE components.serial LIKE '%#{ @component_serial.to_i }'").collect{ |id| Computer.find_by_id( id ) }
+			@computers_by_component_serial = Computer.find_by_sql("SELECT DISTINCT(computers.id) FROM computers INNER JOIN testings ON testings.computer_id=computers.id JOIN components ON components.testing_id=testings.id WHERE components.serial LIKE '%#{ @component_serial }'").collect{ |id| Computer.find_by_id( id ) }
 		end
 
 		if cond.size > 0
