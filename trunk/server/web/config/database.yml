@@ -13,7 +13,7 @@
 #   http://dev.mysql.com/doc/refman/5.0/en/old-client.html
 development:
   adapter: mysql
-  database: inq2
+  database: inq
   username: inq
   password: inq
   encoding: utf8
@@ -32,7 +32,8 @@ test:
 
 production:
   adapter: mysql
-  database: admin_production
-  username: root
-  password: 
+  database: inq
+  username: inq
+  password: inq
+  encoding: utf8
   socket: /var/lib/mysql/mysql.sock
