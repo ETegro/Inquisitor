@@ -18,6 +18,14 @@
 </td><td colspan="2" class="value">
 <textarea name='comment' id='comment' rows="6" cols="30" ><%= @comment %></textarea>
 </td></tr>
+<tr>
+<% if @assembler_map %>
+	<td class="label">
+	<label for="assembler">Assembler</label></td>
+	<td class="value">
+	<%= select_tag("assembler", "<option value=\"\"></option>" + options_for_select(@assembler_map)) %></td>
+<% end %>
+</tr>
 <tr><td class="dummy">
 &nbsp;
 </td><td class="button">
