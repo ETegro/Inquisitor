@@ -1,4 +1,4 @@
-#!/usr/bin/env ruby
+#!/usr/bin/ruby -I/srv/inq/scannerd
 # server/scannerd/scannerd - A part of Inquisitor project
 # Copyright (C) 2004-2009 by Iquisitor team 
 #

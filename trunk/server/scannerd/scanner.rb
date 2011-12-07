@@ -45,12 +45,15 @@ class Scanner
 		return -1 if @svals.size > 5
 		$PAIRED_SCANS.each { |ps|    
 			if @svals.keys.sort! == ps.sort! then
-				puts "Scanned values:"
-				puts @svals
 				preprocess_vals()
 				case ps
 				    when ['C', 'S'] then
 					open("http://#{$SERVER_ADDR}/computers/add_component/#{@svals['S']}.xml?type=Power+Supply&vendor=ColdWatt&model=CWA2-0650-10-IV01&serial=#{@svals['C']}")
+                                    
+                                    when ['S', 'O'] then
+                                        puts "http://#{$SERVER_ADDR}/computers/set_checker/#{@svals['S']}?checker_id=#{@svals['O']}"
+                                        open("http://#{$SERVER_ADDR}/computers/set_checker/#{@svals['S']}?checker_id=#{@svals['O']}")
+
 				    when ['A', 'P', 'S', 'T'], ['A', 'I', 'P', 'S', 'T'] then 
 					addrs=nil
 					
