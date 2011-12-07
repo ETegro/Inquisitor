@@ -18,11 +18,11 @@
 
 <table>
 <tr>
-	<th>Date</th>
-	<th>Computers</th>
-	<th>Hours</th>
-	<th>Assemblers</th>
-	<th>Utilization</th>
+        <th>Date</th>
+        <th>Computers</th>
+        <th>Hours</th>
+        <th>Assemblers</th>
+        <th>Utilization</th>
 </tr>
 
 
@@ -32,13 +32,22 @@
         <td><%= i.comp_count  %></td>
         <td><%= i.hours %></td>
         <td><%= i.asmbl_count %></td>
-	<td><%= i.coef %></td>
+        <td><%= i.coef %></td>
         </tr>
 <% end %>
 <tr>
-	<td colspan = 4>Utilization coefficient sum</td>
-	<td style = "font-weight:bold"><%= @k %></td>
+        <td colspan = 4>Utilization coefficient sum</td>
+        <td style = "font-weight:bold"><%= @k %></td>
 </tr>
+
+<% @assemblers.each_pair do |k,v| %>
+        <tr>
+        <td colspan = 4><%= k %></td>
+        <td><%= v %></td>
+        </tr>
+<% end %>
+
 </table>
 
 </center>
+
