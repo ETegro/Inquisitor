@@ -190,3 +190,23 @@ compare_fast()
 
 	curl -sf "$REST_SERVER/computers/compare_fast/$COMPUTER_ID.xml?files=$files&excluded=$excluded"
 }
+
+get_sutid()
+{
+	curl -sf "$REST_SERVER/computers/get_sutid/$COMPUTER_ID"
+}
+
+get_pool()
+{
+	local group_id=$1
+
+	curl -sf "$REST_SERVER/computers/get_pool/$group_id"
+}
+
+publish_slave()
+{
+	local group_id=$1
+	local ips=$2
+
+	curl -sf "$REST_SERVER/computers/add_to_pool/$COMPUTER_ID?group_id=$group_id&ips=$ips"
+}
