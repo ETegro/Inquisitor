@@ -312,6 +312,8 @@ class OrdersController < ApplicationController
 			return
 		end
 
+		return redirect_to :controller => 'computers', :action => 'show', :id => @computer_serial.to_i if  @computer_serial.to_i > 0
+
 		# Prepare selection lists
 		@models = Model.find(:all, :order => 'name').map { |x| [x.name, x.id] }
 		@models.unshift ['', 0]
