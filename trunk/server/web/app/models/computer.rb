@@ -35,7 +35,7 @@ class Computer < ActiveRecord::Base
 	end
 
 	def self.find_testing()
-		self.find_by_sql(["select computers.*, start from computers join computer_stages on computers.id = computer_stages.computer_id  where stage = 'testing' and end is null order by start"])
+		self.find_by_sql(["select computers.*, start from computers join computer_stages on computers.id = computer_stages.computer_id where (stage = 'testing' and end is null) or (stage = 'assembling' and end is null and computers.ip is not null) order by start"])
 	end
 
 	def last_testing
@@ -56,7 +56,7 @@ class Computer < ActiveRecord::Base
 
 	def ip_addresses
 		config = Shelves::Config.new(DEFAULT_SHELVES_CONFIG)
-		return config.by_ipnet(ip).get_addresses.find_all { |a| s = `/sbin/arp -n | grep #{ a }` ; !s.empty? && s !~ /incomplete/ }
+		return config.by_ipnet(ip).get_addresses.find_all { |a| s = `/usr/sbin/arp -n | grep #{ a }` ; !s.empty? && s !~ /incomplete/ }
 	end
 
 	def set_assembler(person_id)
