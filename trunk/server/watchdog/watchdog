@@ -19,8 +19,10 @@ DB_USER="inq"
 DB_PASSWORD="inq"
 DB_HOST="localhost"
 DB_NAME="inq"
+MAX_PING=300
 
-while true; do
+#while true; do
+
 	cat <<__EOF__ | mysql -u$DB_USER -p$DB_PASSWORD -h$DB_HOST $DB_NAME
 UPDATE computer_stages
 SET end=NOW()
@@ -40,12 +42,13 @@ UPDATE computers c
 	INNER JOIN testings t ON c.id=t.computer_id
 	INNER JOIN testing_stages ts ON t.id=ts.testing_id
 SET ts.end=NOW(), ts.result=3, t.test_end=NOW()
-WHERE TIME_TO_SEC(TIMEDIFF(NOW(), last_ping)) > 120 AND t.test_end IS NULL AND ts.end IS NULL AND ts.result=0;
+WHERE TIME_TO_SEC(TIMEDIFF(NOW(), last_ping)) > $MAX_PING AND t.test_end IS NULL AND ts.end IS NULL AND ts.result=0;
 
 UPDATE computers c
 	INNER JOIN testings t ON c.id=t.computer_id
 SET t.test_end=NOW()
-WHERE TIME_TO_SEC(TIMEDIFF(NOW(), last_ping)) > 120 and t.test_end IS NULL;
+WHERE TIME_TO_SEC(TIMEDIFF(NOW(), last_ping)) > $MAX_PING and t.test_end IS NULL;
 __EOF__
-	sleep 45
-done
+
+#	sleep 45
+#done
