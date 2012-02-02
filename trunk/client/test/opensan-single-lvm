@@ -1,0 +1,34 @@
+#!/bin/sh -e
+# NAME=opensan-single-lvm
+# DESCRIPTION=TODO
+# DESTROYS_HDD=false
+# IS_INTERACTIVE=false
+# POWEROFF_DURING_TEST=false
+# VERSION=0.1
+# TAGS=
+# DEPENDS=
+# VAR=GROUP_ID:int:0:TODO
+# VAR=REMOTE_HOST:string:192.168.1.1:TODO
+
+. _inq-config-global; . $SHARE_DIR/functions-test
+
+ISCSIADM=iscsiadm
+. $SHARE_DIR/remotetesting/lib/functions.sh
+
+IQN=`iqns_get`
+
+get_pool $GROUP_ID | $while read $ent; do
+	computer_id=`echo $ent | cut -f1`
+	ips=`echo $ent | cut -f2-`
+	profile=`mktemp`
+	devnode=`mktemp`
+	rm -f $devnode
+	echo "TEST_NAME=iscsi-login REMOTE_HOST=$REMOTE_HOST OUTPUT=$devnode IQN=\"$IQN\" run_test iscsi-login" > $profile
+	echo "TEST_NAME=dd-read IF=\$(cat $devnode) OF=/dev/null run_test dd" >> $profile
+	for ip in $ips; do
+		echo "Sending profile to $computer_id: $ip"
+		base64 -w 0 < $profile | nc $ip 8372 &
+	done
+done
+
+test_succeeded

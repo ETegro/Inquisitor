@@ -1,0 +1,22 @@
+#!/bin/sh -e
+# NAME=iscsi-login
+# DESCRIPTION=
+# DESTROYS_HDD=false
+# IS_INTERACTIVE=false
+# POWEROFF_DURING_TEST=false
+# VERSION=0.1
+# TAGS=
+# DEPENDS=
+# VAR=REMOTE_HOST:string:192.168.1.1:TODO
+# VAR=IQN:string::TODO
+# VAR=OUTPUT:string::TODO
+
+. _inq-config-global; . $SHARE_DIR/functions-test
+
+ISCSIADM=iscsiadm
+. $SHARE_DIR/remotetesting/lib/functions.sh
+
+iqn_login $REMOTE_HOST $IQN
+devs_get | sed '$n' > $OUTPUT
+
+test_succeeded
