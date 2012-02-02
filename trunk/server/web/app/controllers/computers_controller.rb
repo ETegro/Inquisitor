@@ -893,6 +893,25 @@ __EOF__
 		head(:status => 200)
 	end
 
+	def get_sutid
+		render :text => Computer.find(params[:id]).sut_id.to_s
+	end
+
+	def get_pool
+		@pool = Pool.find_all_by_group_id(params[:id])
+		result = @pool ? @pool.collect { |p| "#{p.computer_id}\t" + p.ips.join("\t") }.join("\n") : ""
+		render :text => result + "\n"
+	end
+
+	def add_to_pool
+		@computer = Computer.find(params[:id])
+		@group_id = params[:group_id]
+		@ips = params[:ips].split(",")
+		pool = Pool.new( :computer_id => @computer.id, :group_id => @group_id )
+		pool.save!
+		@ips.map{ |ip| PoolIp.find_or_create_by_pool_id_and_ip( pool.id, ip ) }
+	end
+
 	def get_needed_firmwares_list
 		@computer = Computer.find(params[:id])
 		@testing = @computer.last_testing
