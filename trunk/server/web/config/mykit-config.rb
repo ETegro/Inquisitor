@@ -6,4 +6,4 @@
 # - or -
 # 2) update the path below to point to a folder with mykit/ subtree 
 #    that contains your keywords.rb
-MYKIT_KEYWORDS_PATH='/srv/mykit/lib'
+MYKIT_KEYWORDS_PATH='/srv/mykit/lib/mykit/'
