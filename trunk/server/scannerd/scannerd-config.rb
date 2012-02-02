@@ -14,4 +14,4 @@ $TIMEOUT_LIMIT=600
 #$SCANNER_FILENAMES=[ '/dev/ttyUSB0' ]
 #$SCANNER_FILENAMES=[ '/dev/null' ]
 #$SCANNER_FILENAMES=[ '/dev/stdin' ]
-$SCANNER_FILENAMES=[ '/dev/ttyS1' ]
+$SCANNER_FILENAMES=[ '/dev/ttyS0' ]
