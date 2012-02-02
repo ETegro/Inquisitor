@@ -4,9 +4,11 @@ $SERVER_ADDR="localhost:80"
 $SCANNERD_RESET_SEQ = "reset"
 
 $PAIRED_SCANS = [
-	['S','T'],
-	['P','S'],
 	['C','S'],
+	['S','O'],
+	['S','T'],
+	['S','P','T','A'],
+	['S','P','I','T','A']
 ]
 
 $TIMEOUT_LIMIT=180
