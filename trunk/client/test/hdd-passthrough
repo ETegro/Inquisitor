@@ -20,6 +20,8 @@
 
 . _inq-config-global; . $SHARE_DIR/functions-test
 
+echo 0 > /proc/sys/kernel/hung_task_timeout_secs 2>/dev/null || true
+
 exit_handler()
 {
 	sleep 5
