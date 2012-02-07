@@ -17,7 +17,7 @@ ISCSIADM=iscsiadm
 
 IQN=`iqns_get`
 
-get_pool $GROUP_ID | $while read $ent; do
+get_pool $GROUP_ID | while read ent; do
 	computer_id=`echo $ent | cut -f1`
 	ips=`echo $ent | cut -f2-`
 	profile=`mktemp`
