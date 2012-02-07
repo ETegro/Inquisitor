@@ -9,7 +9,7 @@
 # DEPENDS=
 # VAR=GROUP_ID:int:0:TODO
 # VAR=WAITTIME:int:30:TODO
-# VAR=SLAVES:int:3:TODO
+# VAR=SLAVES:int:1:TODO
 
 . _inq-config-global; . $SHARE_DIR/functions-test
 
