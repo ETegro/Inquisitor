@@ -59,7 +59,9 @@ CMD_SSH()
 	chmod 600 $key
 	echo "$REMOTE_KEY_PRIV" | base64 -d > $key
 	$SSH -i $key ${REMOTE_USER}@${REMOTE_HOST} $@
-	#rm -f $key
+	retedval=$?
+	rm -f $key
+	return $retedval
 }
 
 CMD_SCP()
@@ -70,7 +72,9 @@ CMD_SCP()
 	chmod 600 $key
 	echo "$REMOTE_KEY_PRIV" | base64 -d > $key
 	$SCP -i $key "$src" ${REMOTE_USER}@${REMOTE_HOST}:"$dst"
-	#rm -f $key
+	retedval=$?
+	rm -f $key
+	return $retedval
 }
 
 retrieve_lua()
