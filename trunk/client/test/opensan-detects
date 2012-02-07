@@ -26,4 +26,5 @@ version=`CMD_SSH cat /usr/lib/lua/luci/version.lua | sed -n 's/^.*distversion = 
 [ -n "$version" ] || test_failed "Unable to determine version"
 add_component 'OpenSAN' "ETegro Technologies" "OpenSAN" "" "$version"
 
+submit_additional_components $HOME/components.xml
 test_succeeded
