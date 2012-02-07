@@ -15,7 +15,7 @@
 ISCSIADM=iscsiadm
 . $SHARE_DIR/remotetesting/lib/functions.sh
 
-IQN=`iqns_get`
+IQN=`iqns_get` | cut -d\  -f2
 
 get_pool $GROUP_ID | while read ent; do
 	computer_id=`echo $ent | cut -f1`
