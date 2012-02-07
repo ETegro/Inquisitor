@@ -18,6 +18,7 @@
 exit_handler()
 {
 	[ -f "$config" ] && rm -f $config
+	[ -d "$remotetesting" ] && rm -fr $remotetesing
 }
 
 config=`mktemp`
@@ -33,7 +34,10 @@ DD="sudo dd"
 FIO="sudo fio"
 EOF
 
-pushdq $SHARE_DIR/remotetesting
+remotetesing=`mktemp -d`
+cp -av $SHARE_DIR/remotetesting $remotetesing/
+
+pushdq $remotetesing/remotetesting
 CONFIG=$config ./perform.sh $REMOTETEST
 popd
 
