@@ -910,6 +910,7 @@ __EOF__
 		pool = Pool.new( :computer_id => @computer.id, :group_id => @group_id )
 		pool.save!
 		@ips.map{ |ip| PoolIp.find_or_create_by_pool_id_and_ip( pool.id, ip ) }
+		head(:status => 200)
 	end
 
 	def get_needed_firmwares_list
