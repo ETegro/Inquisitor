@@ -22,7 +22,7 @@ exit_handler()
 	[ -f "$ssh_key_prv" ] && rm -f $ssh_key_prv
 }
 
-version=`$CMD_SSH "sed -n 's/^.*distversion = .V\\(.*\\).$/\1/p' < /usr/lib/lua/luci/version.lua"`
+version=`CMD_SSH cat /usr/lib/lua/luci/version.lua | sed -n 's/^.*distversion = .V\\(.*\\).$/\1/p'`
 [ -n "$version" ] || test_failed "Unable to determine version"
 add_component 'OpenSAN' "ETegro Technologies" "OpenSAN" "" "$version"
 
