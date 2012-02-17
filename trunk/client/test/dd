@@ -19,9 +19,6 @@
 
 pushdq $SHARE_DIR/firmwares
 
-# Some protection from fools to produce test fail comments
-[ -b "/dev/$OF" ] || test_failed 'Target device is not block device'
-
 [ "$COUNT" -eq 0 ] && COUNT_ARG="" || COUNT_ARG="count=$COUNT"
 if [ "$COMPRESSION" = "none" ] || [ -z "$COMPRESSION" ]; then
 	DECOMPRESSOR="cat"
