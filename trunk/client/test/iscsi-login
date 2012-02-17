@@ -14,9 +14,16 @@
 . _inq-config-global; . $SHARE_DIR/functions-test
 
 ISCSIADM=iscsiadm
+$ISCSIADM --mode node --logoutall=all || true
+/etc/init.d/open-iscsi restart
+
 . $SHARE_DIR/remotetesting/lib/functions.sh
 
+iqns_get $REMOTE_HOST
 iqn_login $REMOTE_HOST $IQN
+sleep 10
 devs_get | sed '$n' > $OUTPUT
+echo -n "Got iSCSI device: "
+cat $OUTPUT
 
 test_succeeded
