@@ -29,7 +29,7 @@ end
 
 LOGICAL = nil
 function TestCreate:test_create_logical()
-	einarc.Logical.add( "0", PS_IDS )
+	einarc.Logical.add( "6", PS_IDS )
 	local logicals = einarc.Logical.list()
 	assertEquals( #common.keys( logicals ), 1 )
 	assert( logicals[0] )
@@ -58,8 +58,10 @@ end
 
 LOGICAL_VOLUME = nil
 function TestCreate:test_create_logical_volume()
+	--VOLUME_GROUP:logical_volume( random_name(),
+	 --                            1024 * VOLUME_GROUP.extent )
 	VOLUME_GROUP:logical_volume( random_name(),
-	                             1 * VOLUME_GROUP.extent )
+	                             VOLUME_GROUP.total / VOLUME_GROUP.extent )
 	lvm.LogicalVolume.rescan()
 	LOGICAL_VOLUME = lvm.LogicalVolume.list( { VOLUME_GROUP } )[1]
 	assert( LOGICAL_VOLUME )
