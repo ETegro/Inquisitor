@@ -16,8 +16,8 @@
 
 exit_handler()
 {
-	[ -s "$TMP_DIR/xhpl.pid" ] && kill `cat $TMP_DIR/xhpl.pid` 2>$DEBUG_TTY
-	[ -s "$TMP_DIR/mcechecker.pid" ] && kill `cat $TMP_DIR/mcechecker.pid` 2>$DEBUG_TTY
+	kill `cat $TMP_DIR/xhpl.pid` 2>$DEBUG_TTY
+	kill `cat $TMP_DIR/mcechecker.pid` 2>$DEBUG_TTY
 	[ -d "$TMP_DIR" ] && rm -fr $TMP_DIR
 }
 
@@ -36,7 +36,7 @@ mce_checker()
 mpi_runner()
 {
 	pushdq $TMP_DIR
-	mpirun -np `get_cpus_list | wc -l` $BINARY_PATH 2>&1 | tee $TMP_DIR/output
+	mpirun -np `get_cpus_list | wc -l` $TMP_DIR/xhpl 2>&1 | tee $TMP_DIR/output
 	touch $TMP_DIR/finished
 	popdq
 }
@@ -45,6 +45,8 @@ echo -n "Starting MCE checker up..."
 mce_checker &
 echo $! > $TMP_DIR/mcechecker.pid
 echo_success
+
+ln -s $BINARY_PATH $TMP_DIR/xhpl
 
 if [ "$PS" = "0" -a "$QS" = "0" ]; then
 	# Some default values
@@ -56,7 +58,6 @@ if [ "$PS" = "0" -a "$QS" = "0" ]; then
 		"8") PS=2 ; QS=4 ;;
 		"12") PS=2 ; QS=6 ;;
 		"16") PS=4 ; QS=4 ;;
-		"20") PS=4 ; QS=5 ;;
 		"24") PS=4 ; QS=6 ;;
 		"32") PS=4 ; QS=8 ;;
 		"40") PS=4 ; QS=10 ;;
@@ -72,7 +73,7 @@ fi
 	print_green_message "Using $PS x $QS matrix size"
 
 # The following working calculation was taken from unknown source
-matrix_size_to_test="`free | awk ' /Mem:/ { print sqrt( ( $2 - 524288 ) * 0.95 * 1024 / 8 ) } '`"
+matrix_size_to_test="`free | awk ' /Mem:/ { print sqrt( ( $2 - 524288 ) * 0.82 * 1024 / 8 ) } '`"
 
 # Format of this file was not changed for many years
 cat > $TMP_DIR/HPL.dat <<__EOF__
@@ -110,11 +111,8 @@ $QS        QS
 
 __EOF__
 
-assure_network_stack_exists
-
 echo -n "Running tests itself..."
 mpi_runner &
-echo $! > $TMP_DIR/xhpl.pid
 echo_success
 
 while ! [ -e $TMP_DIR/finished ]; do
