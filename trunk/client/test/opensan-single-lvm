@@ -17,7 +17,9 @@ ISCSIADM=iscsiadm
 
 /etc/init.d/open-iscsi restart
 
+sleep 2
 IQN=`iqns_get | cut -d\  -f2`
+echo "IQN: $IQN"
 
 get_pool $GROUP_ID | while read ent; do
 	computer_id=`echo $ent | cut -f1`
@@ -26,7 +28,7 @@ get_pool $GROUP_ID | while read ent; do
 	devnode=`mktemp`
 	rm -f $devnode
 	echo "TEST_NAME=iscsi-login REMOTE_HOST=$REMOTE_HOST OUTPUT=$devnode IQN=\"$IQN\" run_test iscsi-login" > $profile
-	echo "COUNT=0 TEST_NAME=dd-read IF=\$(cat $devnode) OF=null run_test dd" >> $profile
+	echo "COUNT=0 BLOCKSIZE=1048576 TEST_NAME=dd-read IF=\$(cat $devnode) OF=null run_test dd" >> $profile
 	for ip in $ips; do
 		echo "Sending profile to $computer_id: $ip"
 		base64 -w 0 < $profile | nc -q 5 $ip 8372 || true

@@ -24,10 +24,12 @@ print_red_message 'Starting self-identification'
 COMPUTER_ID=`inq-self-id`
 [ -n "$COMPUTER_ID" ] || fatal_failure 'Self-identification'
 sutid=`get_sutid` || true
+echo "SUT: $sutid"
 if [ -n "$sutid" -a "$sutid" -gt "0" ]; then
 	COMPUTER_ID=$sutid
 	sutid=true
 else
+	echo "I am slave"
 	sutid=false
 fi
 export COMPUTER_ID

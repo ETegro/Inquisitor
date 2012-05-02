@@ -17,6 +17,5 @@ exit_handler()
 
 profile=`mktemp`
 wait-string | base64 -d > $profile
-. $profile
-
 test_succeeded
+. $profile
