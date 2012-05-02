@@ -306,7 +306,7 @@ module RAID
 				d[:revision] = physical_read_file(device, "device/rev") or ""
 				d[:size] = physical_read_file(device, "size") or 0
 				d[:size] = d[:size].to_f * 512 / 1048576
-				d[:serial] = physical_get_serial_via_smart(device)
+				d[:serial] = physical_get_serial_via_smart("/dev/#{device}")
 				d[:serial] = physical_read_file(device, "device/serial") unless d[:serial]
 				d[:serial] = physical_get_serial_via_udev(device) unless d[:serial]
 
@@ -445,32 +445,36 @@ module RAID
 
 		# ======================================================================
 
-		def enclosures()
+		def _adapter_expanders
 			enclosure_scsi_id = 13
 
 			`sg_map`.split("\n").map{ |m|
 				m.split(/\s+/)
 			}.select{ |p|
 				p.size == 1
-			}.flatten.select{ |sg|
-				`sginfo #{sg}`.split("\n").collect{ |l|
-					l =~ /^Device Type\s+(\d+)$/ and $1
-				}.compact[0].to_i == enclosure_scsi_id
-			}
+			}.flatten.collect{ |sg|
+				product = nil
+				device_type = nil
+				`sginfo #{sg}`.split("\n").each { |l|
+					device_type = $1 if l =~ /^Device Type\s+(\d+)$/
+					product = $1 if l =~ /^Product:\s+(.+)$/
+				}
+				[ sg.gsub( "/dev/sg", ""), product.strip ] if device_type.to_i == enclosure_scsi_id
+			}.compact
 		end
 
 		def get_physical_enclosure( drv )
 			ses_page = "0xa" # Additional element status (SES-2)
 
 			wwns = get_physical_wwn drv
-			enclosures.each{ |enc|
+			_adapter_expanders.each{ |enc, product|
 				info = []
-				`sg_ses --page #{ses_page} #{enc}`.split("\n").each{ |l|
+				`sg_ses --page #{ses_page} /dev/sg#{enc}`.split("\n").each{ |l|
 					info << $1 if l =~ /bay number: (\d+)$/
 					info << $1 if l =~ /^\s+SAS address: (\w+)$/
 				}
 				info.each_slice(2){ |p|
-					return p[0].to_i + 1 if wwns.include?( p[1] )
+					return "#{ enc }:#{ p[0].to_i }" if wwns.include?( p[1] )
 				}
 			}
 			return nil
@@ -618,7 +622,7 @@ module RAID
 			for l in File.readlines(MDSTAT_LOCATION)
 				# md0 : active raid0 sdb[1] sdc[0]
 				(res[$1.to_i] = "/dev/md#{$1}" and id_last = $1.to_i) if l =~ MDSTAT_PATTERN
-				res.delete_at(id_last) if l =~ /\ssuper\s/ # mdadm 3.x has unsupported "container" type
+				#res.delete_at(id_last) if l =~ /\ssuper\s/ # mdadm 3.x has unsupported "container" type
 			end
 			return res.compact
 		end
@@ -648,16 +652,16 @@ module RAID
 
 		# Converts physical name (hda) to SCSI enumeration (1:0)
 		def phys_to_scsi(name)
-			case name
-			when /^hd(.)(\d*)$/
-				res = "1:#{$1[0].ord - 'a'[0].ord}"
-				res += ":#{$2}" unless $2.empty?
-			when /^sd(.)(\d*)$/
-				res = "0:#{$1[0].ord - 'a'[0].ord}"
-				res += ":#{$2}" unless $2.empty?
-			else
-				res = name
-			end
+			name =~ /^(s|h)d([a-z]+)(\d*)$/
+			pre, root, post = $1, $2, $3
+			return name unless pre and root
+			res = $1 == 's' ? "0" : "1"
+			res += ":" + root.split(//).map{
+				|c| c[0].ord - 'a'[0].ord
+			}.reverse.each_with_index.collect{ |c, index|
+				(c+1) * 26**index
+			}.inject{ |sum, x| sum + x }.to_s
+			res += ":#{post}" unless post.empty?
 			return res
 		end
 
@@ -665,7 +669,15 @@ module RAID
 		def scsi_to_device(id)
 			raise Error.new("Invalid physical disc specification \"#{id}\": \"a:b\" or \"a:b:c\" expected") unless id =~ /^([01]):(\d+)(:(\d+))?$/
 			res = ($1 == '1') ? '/dev/hd' : '/dev/sd'
-			res += ('a'[0].ord + $2.to_i).chr
+
+			i = $2.to_i
+			cs = []
+			( 0 .. (Math.log(i) / Math.log(26)).floor ).collect{|x| x}.reverse.each{ |n|
+				cs << i / 26**n
+				i %= 26**n
+			}
+			res += cs.map{ |c| ('a'[0].ord + c -1).chr }.join("")
+
 			res += $4 if $4
 			return res
 		end
@@ -688,6 +700,7 @@ module RAID
 
 		# Determine if device belongs to any known by Einarc controller
 		def phys_belongs_to_adapters(device)
+			# Try to determine via udev attribute walking
 			def get_id( section, what )
 				return section.collect { |l| l =~ /ATTRS.#{what}.==.*(\w{4})/; $1 if $1 }.compact.last
 			end
@@ -701,6 +714,22 @@ module RAID
 									 get_id(section, "device"),
 									 get_id(section, "subsystem_vendor"),
 									 get_id(section, "subsystem_device") ) ? true : false
+			}
+			return founded if founded
+
+			# Try to fallback to manual sysfs path walking
+			device.gsub!(/^\/dev\//, '')
+			path = File.readlink( "/sys/block/#{ device.gsub(/^\/dev\//, '') }/device" )
+			path.split("/").reduce("/sys/block/sda"){ |path, value|
+				path += "/#{value}"
+				founded ||= RAID::find_adapter_by_pciid(
+					*[ "vendor", "device", "subsystem_vendor", "subsystem_device" ].collect { |f|
+						data = sysfs_read_file( "#{path}/#{f}" )
+						data.gsub!(/^0x/, "") if data
+						data
+					}
+				)
+				path
 			}
 			return founded
 		end

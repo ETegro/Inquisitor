@@ -10,9 +10,11 @@ module RAID
 			'1000-0413' => ["1000", "0413"],
 			'1000-005b' => ["1000", "005b"],
 			'1028-0015' => ["1028", "0015"],
+			'1028-0015' => ["1028", "0015"],
 		}
 
-		MEGACLI = "#{$EINARC_LIB}/lsi_megacli/cli"
+		#MEGACLI = "#{$EINARC_LIB}/lsi_megacli/cli"
+		MEGACLI = "/usr/local/bin/lsi_megacli"
 
 		def initialize(adapter_num = nil)
 			adapter_num = 0 if !adapter_num
@@ -166,7 +168,7 @@ module RAID
 			}
 
 			# Try to find corresponding /dev-entries
-			devices = Dir.entries("/sys/block").select { |dev| physical_read_file( dev, "device/model" ) =~ /^(MegaRAID|MR|RS2BL080|RS2BL040|SMC2108)/ }
+			devices = Dir.entries("/sys/block").select { |dev| physical_read_file( dev, "device/model" ) =~ /^(MegaRAID|MR|RS2BL080|RS2BL040|SMC2108|MR9260)/ }
 			devs = {}
 			devices.each { |dev|
 				if File.exist?("/sys/block/#{dev}/device/scsi_disk") then
@@ -538,6 +540,7 @@ module RAID
 		private
 
 		def run(command)
+			#p "GOING TO", command
 			out = `#{MEGACLI} #{command}`.split("\n").collect { |l| l.strip }
 			raise Error.new(out.join("\n")) if $?.exitstatus != 0
 			return out

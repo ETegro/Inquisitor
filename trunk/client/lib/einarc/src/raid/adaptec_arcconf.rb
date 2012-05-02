@@ -20,7 +20,11 @@ module RAID
 		}
 
 		def initialize(adapter_num = nil)
-			@adapter_num = adapter_num ? adapter_num : 1
+			if adapter_num
+				@adapter_num = adapter_num
+			else
+				@adapter_num = 1
+			end
 		end
 
 		# ======================================================================
@@ -233,15 +237,19 @@ module RAID
 			raid_level = 'linear' if raid_level == '0' and discs.size == 1
 
 			sizes.each { |s|
-				cmd = "create #{@adapter_num} logicaldrive #{opt_cmd}"
+				cmd = "create #{@adapter_num} logicaldrive #{opt_cmd} "
+#				cmd += ' Method QUICK '
 				raid_level = 'volume' if raid_level == 'linear'
 				cmd += s ? s.to_s : 'MAX'
 				cmd += " #{raid_level} "
 				cmd += discs.join(' ').gsub(/:/, ',')
+				
 				cmd += ' noprompt'
+
 
 #				TODO: 	port size computation/validation logic
 #					from adaptec_aaccli module#r1313,207:241
+				puts cmd
 				run(cmd)
 			}
 
@@ -276,29 +284,31 @@ module RAID
 			return res
 		end
 
-#      Device #5
+#Controllers found: 1
+#----------------------------------------------------------------------
+#Physical Device information
+#----------------------------------------------------------------------
+#   Channel #0:
+#      Transfer Speed                        : Ultra320
+#      Initiator at SCSI ID 7
+#      Device #2
 #         Device is a Hard drive
-#         State                              : Ready
+#         State                              : Online
 #         Supported                          : Yes
-#         Transfer Speed                     : SATA 1.5 Gb/s
-#         Reported Channel,Device(T:L)       : 0,5(5:0)
-#         Reported Location                  : Enclosure 1, Slot 5
-#         Reported ESD(T:L)                  : 2,1(1:0)
-#         Vendor                             : 
-#         Model                              : ST31000528AS
-#         Firmware                           : CC37
-#         Serial number                      : 9VP22859
-#         Size                               : 953869 MB
-#         Write Cache                        : Enabled (write-back)
+#         Transfer Speed                     : Ultra320
+#         Reported Channel,Device            : 0,2
+#         Vendor                             : FUJITSU
+#         Model                              : MAW3073NC
+#         Firmware                           : 0104
+#         Serial number                      : DAL0P7605RJ5
+#         Size                               : 70136 MB
+#         Write Cache                        : Unknown
 #         FRU                                : None
 #         S.M.A.R.T.                         : No
-#         S.M.A.R.T. warnings                : 0
-#         Power State                        : Full rpm
-#         Supported Power States             : Full rpm,Powered off
-#         SSD                                : No
-#         MaxIQ Cache Capable                : No
-#         MaxIQ Cache Assigned               : No
-#         NCQ status                         : Disabled
+#   Channel #1:
+#      Transfer Speed                        : Ultra320
+#      Initiator at SCSI ID 7
+#      No physical drives attached
 		def _physical_list
 			@physical = {}
 			dev = nil
@@ -354,8 +364,8 @@ module RAID
 		def get_adapter_raidlevels(x = nil)
 			levels = {
 				'Adaptec 3805'	=> [ 'linear', 'passthrough', '0', '1', '1E', '5', '5EE', '6', '10', '50', '60' ],
-				'Adaptec 5805'	=> [ 'linear', 'passthrough', '0', '1', '1E', '5', '5EE', '6', '10', '50', '60' ],
-				'Adaptec 5805Z'	=> [ 'linear', 'passthrough', '0', '1', '1E', '5', '5EE', '6', '10', '50', '60' ],
+				'Adaptec 5805'	=> [ 'linear', 'passthrough', '0', '1', '1E', '5', '5EE', '6', '10', '50', '60' ],				'Adaptec 5805'	=> [ 'linear', 'passthrough', '0', '1', '1E', '5', '5EE', '6', '10', '50', '60' ],
+				'Adaptec 5805Z'	=> [ 'linear', 'passthrough', '0', '1', '1E', '5', '5EE', '6', '10', '50', '60' ],				'Adaptec 5805'	=> [ 'linear', 'passthrough', '0', '1', '1E', '5', '5EE', '6', '10', '50', '60' ],
 				'Adaptec 51645'	=> [ 'linear', 'passthrough', '0', '1', '1E', '5', '5EE', '6', '10', '50', '60' ],
 				'Adaptec 5405'	=> [ 'linear', 'passthrough', '0', '1', '1E', '5', '5EE', '6', '10', '50', '60' ],
 				'Adaptec 2230S'	=> [ 'linear', 'passthrough', '0', '1', '5', '10', '50' ],
@@ -455,26 +465,35 @@ module RAID
 
 		# ======================================================================
 
-#--------------------------------------------------------
-#Controller Battery Information
-#--------------------------------------------------------
-#Status                                   : Optimal
-#Over temperature                         : No
-#Capacity remaining                       : 98 percent
-#Time remaining (at current draw)         : 3 days, 0 hours, 31 minutes
 		def _bbu_info
-			info = {}
-			run("getconfig #{@adapter_num} ad").grep(/^Status\s*:\s*(.*?)$/) {
-				unless $1 =~ /Not Installed/
-					info[:vendor] = 'Adaptec'
-					info[:device] = 'BBU'
+	    	    info = {}
+    		    run("getconfig #{@adapter_num} ad").grep(/^Status\s*:\s*(.*?)$/) {
+            	    unless $1 =~ /Not Installed/
+			info[:vendor] = 'Adaptec'
+			info[:device] = 'BBU'
+		    end
+		    }
+		    return info
+		end
+		
+		def _bbu_info2
+			for line in run("getconfig #{@adapter_num} ad")
+				if line =~ /^Status\s*:\s*(.*?)$/
+					status = $1
+					break
 				end
-			}
-			return info
+			end
+			info = {}
+			
+			if status =~ /Optimal/
+				info[:vendor] = 'Adaptec'
+				info[:device] = 'BBU'
+			end
+			
+			info
 		end
 		
 		# ======================================================================
-		
 		private
 
 		def run(command, check = true)

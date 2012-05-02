@@ -30,7 +30,7 @@ module RAID
 #			p [vendor_id, product_id]
 			adapter = find_adapter_by_pciid(vendor_id, product_id)
 			if adapter
-				puts "Detected device supported by \"#{adapter}\" (#{vendor_id}:#{product_id})"
+#				puts "Detected device supported by \"#{adapter}\" (#{vendor_id}:#{product_id})"
 				res << adapter
 			end
 		}
@@ -40,6 +40,7 @@ module RAID
 
 	# Find corresponding Einarc's module working with controller specified by PCI ID
 	def self.find_adapter_by_pciid(vendor_id, product_id, sub_vendor_id = nil, sub_product_id = nil)
+		#p "CALLED", vendor_id, product_id, sub_vendor_id, sub_product_id
 		return (pcimap[[vendor_id, product_id, sub_vendor_id, sub_product_id]] or pcimap[[vendor_id, product_id]])
 	end
 end
