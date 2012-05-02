@@ -7,6 +7,7 @@
 need_kernel_module eeprom
 need_kernel_module ipmi_si
 need_kernel_module ipmi_devintf
+need_kernel_module ipmi_msghandler
 [ -f /proc/mdstat ] || need_kernel_module md
 
 # Save detection logs
@@ -18,9 +19,7 @@ grep -q "No SMBIOS nor DMI entry point found" $HOME/dmi.log &&
 
 $SHARE_DIR/decode-dimms.pl >$HOME/spd.log 2>$DEBUG_TTY
 
-if has_ipmi; then
-	ipmitool fru >$HOME/fru.log ||:
-fi
+ipmitool fru >$HOME/fru.log ||:
 
 lspci >$HOME/lspci.log
 
