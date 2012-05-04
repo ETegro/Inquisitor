@@ -99,7 +99,7 @@ START_TIME=`date "+%s"`
 
 # Run badblocks and compilation processes simultaneously
 if raid-hdd-revision; then
-	test_faild "HDD model/revision mismatch deyected. Aborting test."
+	test_failed "HDD model/revision mismatch detected. Aborting test."
 fi
 
 badblocks_test &
