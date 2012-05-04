@@ -1,0 +1,17 @@
+#!/usr/bin/env ruby
+
+$LOAD_PATH.unshift('.')
+require 'raid/baseraid'
+
+models = {}
+
+RAID::BaseRaid::query_adapters.each { |ad|
+        a = RAID::RAIDS[ad[:driver]].new(ad[:num])
+        a.logical_clear
+	a._physical_list.each { |ph|
+		(models[ph[:model]] = models[ph[:model] || {}).merge!(ph[:revision] => ph[:revision])
+	
+}
+}
+
+exit 1 unless model.values.find { |v| v.size > 1 }

@@ -4,7 +4,7 @@
 # DESTROYS_HDD=true
 # IS_INTERACTIVE=false
 # POWEROFF_DURING_TEST=false
-# VERSION=0.3
+# VERSION=0.4
 # TAGS=hdd,stress
 # DEPENDS=CPU,HDD,Memory,Mainboard,Disk Controller
 # VAR=DISK_GROUP_SIZE:int:8:Number of disks per group for testing
@@ -98,6 +98,10 @@ stress_test()
 START_TIME=`date "+%s"`
 
 # Run badblocks and compilation processes simultaneously
+if raid-hdd-revision; then
+	test_faild "HDD model/revision mismatch deyected. Aborting test."
+fi
+
 badblocks_test &
 BADBLOCKS_PID=$!
 if [ "$SKIP_STRESS_TESTING" = "true" ]; then
