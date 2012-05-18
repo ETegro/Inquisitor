@@ -98,8 +98,8 @@ stress_test()
 START_TIME=`date "+%s"`
 
 # Run badblocks and compilation processes simultaneously
-if raid-hdd-revision; then
-	test_failed "HDD model/revision mismatch detected. Aborting test."
+if ! raid-hdd-revision; then
+	test_failed "HDD model/revision mismatch detected"
 fi
 
 badblocks_test &
