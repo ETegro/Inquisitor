@@ -8,6 +8,7 @@ models = {}
 RAID::BaseRaid::query_adapters.each { |ad|
 	a = RAID::RAIDS[ad[:driver]].new(ad[:num])
 	a.logical_clear
+	exit 0 if a._physical_list.empty?
 	a._physical_list.values.each { |ph|
 		(models[ph[:model]] = models[ph[:model]] || {}).merge!(ph[:revision] => ph[:revision])
 	}
