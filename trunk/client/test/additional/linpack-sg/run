@@ -1,0 +1,2 @@
+cd stress
+./testhpl.sh $@
