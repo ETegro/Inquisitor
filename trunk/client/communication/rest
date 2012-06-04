@@ -200,7 +200,14 @@ get_pool()
 {
 	local group_id=$1
 
-	curl -sf "$REST_SERVER/computers/get_pool/$group_id"
+	curl -sf "$REST_SERVER/computers/get_pool/$group_id" | sed '/^$/d'
+}
+
+pool_clear()
+{
+	local group_id=$1
+
+	curl -sf "$REST_SERVER/computers/pool_clear/$group_id"
 }
 
 publish_slave()

@@ -913,6 +913,15 @@ __EOF__
 		head(:status => 200)
 	end
 
+	def pool_clear
+		@group_id = params[:id]
+		Pool.find_all_by_group_id( @group_id ).map{ |p|
+			PoolIp.find_all_by_pool_id( p.id ).map { |pip| PoolIp.delete( pip.id ) }
+			Pool.delete( p.id )
+		}
+		head(:status => 200)
+	end
+
 	def get_needed_firmwares_list
 		@computer = Computer.find(params[:id])
 		@testing = @computer.last_testing
