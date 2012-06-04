@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 
 max_pass=$1
 output="output.`date +%Y.%m.%d-%H%M`"
@@ -83,6 +83,7 @@ case "$CPUcount" in
 	"32") Ps=4 ; Qs=8 ;;
 	"40") Ps=4 ; Qs=10 ;;
 	"48") Ps=6 ; Qs=8 ;;
+	"64") Ps=4 ; Qs=16 ;;
 	"80") Ps=4 ; Qs=20 ;;
 esac
 [ "$Ps" = "0" -o "$Qs" = "0" ] && exit 1
@@ -111,7 +112,7 @@ pass=0
 while [ "$pass" -le "$max_pass" ]; do
 	let breakout=1 
 
-	mpirun -np $CPUcount ./xhpl >> $output && kill -USR1 $this_pid &
+	mpirun -host localhost -np $CPUcount ./xhpl >> $output && kill -USR1 $this_pid &
 	echo -n  "Running pass $pass...  "
 	timePassStart=`date +%s`
 	while [[ $breakout -eq 1 ]]; do
