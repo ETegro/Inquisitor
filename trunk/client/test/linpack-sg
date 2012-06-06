@@ -1,0 +1,29 @@
+#!/bin/sh -e
+# NAME=StargraveHPL
+# DESCRIPTION=
+# DESTROYS_HDD=false
+# IS_INTERACTIVE=false
+# POWEROFF_DURING_TEST=false
+# VERSION=0.1
+# TAGS=
+# DEPENDS=
+# VAR=CYCLES:int:4:Number of cycles to run test
+
+. _inq-config-global; . $SHARE_DIR/functions-test
+
+exit_handler()
+{
+	[ -d "$TMP_DIR" ] && rm -fr $TMP_DIR
+}
+
+TMP_DIR=`mktemp -d`
+
+echo -n "Copying source code..."
+cp -a $SHARE_DIR/test/additional/linpack-sg/* $TMP_DIR/
+echo_success
+
+pushdq $TMP_DIR
+./run $CYCLES || test_failed "hpl failed"
+popdq
+
+test_succeeded
