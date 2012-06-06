@@ -2,6 +2,7 @@
 
 while true; do
 	/usr/sbin/mcelog >> mceErrors
-	grep "" < mceErrors 1>/dev/null 2>/dev/null && kill -USR2 $1
-	sleep 10s
+	[ -e mceErrors ] || exit
+	grep "" mceErrors >/dev/null 2>&1 && kill -USR2 $1
+	sleep 10
 done 

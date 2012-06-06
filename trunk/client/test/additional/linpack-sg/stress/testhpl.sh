@@ -24,11 +24,13 @@ cleanup ()
 	if test "`awk ' /GFlops/ { print $5 , $6 , $7 } ' $output.results | sort -u | wc -l`" -le 1; then
 		echo "PASS: No corruption found."
 	else
+		failed=1
 		echo "FAIL: Corruption found!"
 	fi
 
 	if grep "" < mceErrors 1>/dev/null 2>/dev/null; then
 		echo "FAIL: MCE Errors occured!"
+		failed=1
 	else
 		echo "PASS: No MCE Errors occured."
 	fi
@@ -37,7 +39,7 @@ cleanup ()
 	echo $timeTestStart $timeTestStop | awk '{ print "HPL Ran for " ( $2 - $1 ) / 60 " minutes before stopping." }' | tee -a  $output 
 
 	wait
-	exit 0
+	[ "$failed" = 1 ] && exit 1 || exit 0
 }
 
 cursor[0]='|'
@@ -88,7 +90,7 @@ case "$CPUcount" in
 esac
 [ "$Ps" = "0" -o "$Qs" = "0" ] && exit 1
 
-MEM=`free | awk ' /Mem:/ { print sqrt( ( $2 - 524288 ) * 0.92 * 1024 / 8 ) } '`
+MEM=`free | awk ' /Mem:/ { print sqrt( ( $2 - 524288 ) * 0.90 * 1024 / 8 ) } '`
 
 cat HPL.base | sed 6s/replaceNs/$MEM/g | sed 11s/replacePs/$Ps/g | sed 12s/replaceQs/$Qs/g > HPL.dat
 
@@ -113,7 +115,7 @@ while [ "$pass" -le "$max_pass" ]; do
 	let breakout=1 
 
 	mpirun -host localhost -np $CPUcount ./xhpl >> $output && kill -USR1 $this_pid &
-	echo -n  "Running pass $pass...  "
+	echo -n  "Running pass $pass... "
 	timePassStart=`date +%s`
 	while [[ $breakout -eq 1 ]]; do
 		update_cursor

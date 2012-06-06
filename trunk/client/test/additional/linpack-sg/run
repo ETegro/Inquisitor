@@ -1,2 +1,2 @@
 cd stress
-./testhpl.sh $@
+./testhpl.sh $@ || exit 1
