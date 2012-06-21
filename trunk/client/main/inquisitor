@@ -21,7 +21,8 @@ print_green_message 'Detects finished'
 # ===========================================================================
 
 print_red_message 'Starting self-identification'
-COMPUTER_ID=`inq-self-id`
+SELF_ID_ADDITIONAL=`sed -n 's/^.*selfid=\([^ ]*\).*$/\1/p' < /proc/cmdline`
+COMPUTER_ID=`ADDITIONAL=$SELF_ID_ADDITIONAL inq-self-id`
 [ -n "$COMPUTER_ID" ] || fatal_failure 'Self-identification'
 sutid=`get_sutid` || true
 echo "SUT: $sutid"
