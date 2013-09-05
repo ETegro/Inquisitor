@@ -36,4 +36,5 @@ production:
   username: inq
   password: inq
   encoding: utf8
-  socket: /var/run/mysqld/mysqld.sock
+#  socket: /var/run/mysqld/mysqld.sock
+  host: 192.168.10.25
