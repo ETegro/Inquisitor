@@ -11,7 +11,7 @@ end
 def active_addresses
 	config = params[:config] ? Shelves::Config.new(params[config]) : @@default_config
 	shelf = config[params[:id]]
-	render :text => shelf.get_addresses.find_all { |a| s = `/usr/sbin/arp -n | grep #{ a }` ; !s.empty? && s !~ /incomplete/ }.join("\n")
+	render :text => shelf.get_addresses.find_all { |a| s = `/usr/sbin/arp -n | grep #{ a }; ssh arp@192.168.10.79 /usr/sbin/arp -n | grep #{ a }` ; !s.empty? && s !~ /incomplete/ }.join("\n")
 end
 
 end

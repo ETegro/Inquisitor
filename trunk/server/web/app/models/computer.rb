@@ -56,7 +56,7 @@ class Computer < ActiveRecord::Base
 
 	def ip_addresses
 		config = Shelves::Config.new(DEFAULT_SHELVES_CONFIG)
-		return config.by_ipnet(ip).get_addresses.find_all { |a| s = `/usr/sbin/arp -n | grep #{ a }` ; !s.empty? && s !~ /incomplete/ }
+		return config.by_ipnet(ip).get_addresses.find_all { |a| s = `/usr/sbin/arp -n | grep #{ a }; ssh arp@192.168.10.79 /usr/sbin/arp -n | grep #{ a }` ; !s.empty? && s !~ /incomplete/ }
 	end
 
 	def set_assembler(person_id)
