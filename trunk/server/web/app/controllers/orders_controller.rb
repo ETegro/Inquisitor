@@ -194,13 +194,17 @@ class OrdersController < ApplicationController
 	  @order.manager = current_person.name
 	
       now = Time.new
-      ['ordering', 'warehouse', 'acceptance'].each { |stage_name|
+      ['ordering', 'warehouse'].each { |stage_name|
         @order.order_stages << OrderStage.new(
                 :stage => stage_name,
 			    :start => now,
 			    :end => now )
       }
-
+	
+	#add order to aceptance stage
+	@order.order_stages<<OrderStage.new(
+			:stage=> 'acceptance',
+			:start=> now)
       if @order.save
         flash[:notice] = 'Order was successfully created.'
         format.html { redirect_to :action => 'show', :id => @order.id }
