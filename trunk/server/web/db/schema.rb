@@ -9,7 +9,7 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 30) do
+ActiveRecord::Schema.define(:version => 32) do
 
   create_table "audits", :force => true do |t|
     t.binary   "comparison"
@@ -49,8 +49,8 @@ ActiveRecord::Schema.define(:version => 30) do
   add_index "components", ["serial"], :name => "serial"
 
   create_table "computer_stages", :force => true do |t|
-    t.integer  "computer_id",                               :null => false
-    t.string   "stage",       :limit => 64, :default => "", :null => false
+    t.integer  "computer_id",               :null => false
+    t.string   "stage",       :limit => 64, :null => false
     t.datetime "start"
     t.datetime "end"
     t.integer  "person_id"
@@ -72,14 +72,15 @@ ActiveRecord::Schema.define(:version => 30) do
     t.datetime "last_ping"
     t.string   "ip",           :limit => 15
     t.integer  "profile_id"
+    t.integer  "sut_id",                     :default => 0
   end
 
   add_index "computers", ["order_id"], :name => "order_id"
   add_index "computers", ["model_id"], :name => "model_id"
 
   create_table "cs", :force => true do |t|
-    t.integer  "computer_id",                               :null => false
-    t.string   "stage",       :limit => 64, :default => "", :null => false
+    t.integer  "computer_id",               :null => false
+    t.string   "stage",       :limit => 64, :null => false
     t.datetime "start"
     t.datetime "end"
     t.integer  "person_id"
@@ -94,17 +95,17 @@ ActiveRecord::Schema.define(:version => 30) do
   end
 
   create_table "firmwares", :force => true do |t|
-    t.string  "version",            :default => "", :null => false
-    t.string  "image",              :default => "", :null => false
-    t.integer "component_model_id",                 :null => false
+    t.string  "version",            :null => false
+    t.string  "image",              :null => false
+    t.integer "component_model_id", :null => false
   end
 
   add_index "firmwares", ["component_model_id"], :name => "index_firmwares_on_component_model_id", :unique => true
 
   create_table "firmwares_bad", :force => true do |t|
-    t.string  "version",            :default => "", :null => false
-    t.string  "image",              :default => "", :null => false
-    t.integer "component_model_id",                 :null => false
+    t.string  "version",            :null => false
+    t.string  "image",              :null => false
+    t.integer "component_model_id", :null => false
   end
 
   create_table "graphs", :force => true do |t|
@@ -134,8 +135,8 @@ ActiveRecord::Schema.define(:version => 30) do
   end
 
   create_table "marks", :force => true do |t|
-    t.integer "testing_stage_id",                                :null => false
-    t.string  "key",              :limit => 250, :default => "", :null => false
+    t.integer "testing_stage_id",                :null => false
+    t.string  "key",              :limit => 250, :null => false
     t.float   "value_float"
     t.text    "value_str"
   end
@@ -151,7 +152,7 @@ ActiveRecord::Schema.define(:version => 30) do
   create_table "models", :force => true do |t|
     t.string  "name",        :limit => 250
     t.string  "stages",      :limit => 250, :default => "mb_bios raid_bios test memtest stress server dmi"
-    t.string  "dmi_name",    :limit => 250, :default => "",                                                 :null => false
+    t.string  "dmi_name",    :limit => 250,                                                                 :null => false
     t.integer "ismodel",     :limit => 6,   :default => 1
     t.integer "mask",        :limit => 6,   :default => 0,                                                  :null => false
     t.integer "complexity"
@@ -162,17 +163,17 @@ ActiveRecord::Schema.define(:version => 30) do
   add_index "models", ["name"], :name => "name"
 
   create_table "order_lines", :force => true do |t|
-    t.integer "order_id",                                :null => false
-    t.string  "name",     :limit => 250, :default => "", :null => false
-    t.integer "qty",                                     :null => false
+    t.integer "order_id",                :null => false
+    t.string  "name",     :limit => 250, :null => false
+    t.integer "qty",                     :null => false
     t.string  "sku",      :limit => 96
   end
 
   add_index "order_lines", ["order_id"], :name => "order_id"
 
   create_table "order_stages", :force => true do |t|
-    t.integer  "order_id",                                 :null => false
-    t.string   "stage",      :limit => 64, :default => "", :null => false
+    t.integer  "order_id",                 :null => false
+    t.string   "stage",      :limit => 64, :null => false
     t.datetime "start"
     t.datetime "end"
     t.integer  "person_id"
@@ -227,6 +228,16 @@ ActiveRecord::Schema.define(:version => 30) do
 
   add_index "person_times", ["person_id"], :name => "person_id"
   add_index "person_times", ["shift_id"], :name => "shift_id"
+
+  create_table "pool_ips", :force => true do |t|
+    t.integer "pool_id",               :null => false
+    t.string  "ip",      :limit => 20
+  end
+
+  create_table "pools", :force => true do |t|
+    t.integer "computer_id",                :null => false
+    t.integer "group_id",    :default => 0
+  end
 
   create_table "profiles", :force => true do |t|
     t.text     "xml"
@@ -286,10 +297,10 @@ ActiveRecord::Schema.define(:version => 30) do
     t.datetime "start"
     t.datetime "end"
     t.integer  "result",                          :default => 0,   :null => false
-    t.text     "comment",                         :default => "",  :null => false
+    t.text     "comment",                                          :null => false
     t.float    "accumulated_idle",                :default => 0.0, :null => false
-    t.string   "test_type",        :limit => 256, :default => "",  :null => false
-    t.string   "test_version",     :limit => 16,  :default => "",  :null => false
+    t.string   "test_type",        :limit => 256,                  :null => false
+    t.string   "test_version",     :limit => 16,                   :null => false
   end
 
   add_index "testing_stages", ["id"], :name => "id", :unique => true
