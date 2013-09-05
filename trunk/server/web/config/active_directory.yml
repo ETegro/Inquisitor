@@ -1,4 +1,5 @@
 host: dc.etegro.local
 port: 389
 domain: etegro.local
+#dn: dc=etegro,dc=local
 dn: cn=users,dc=etegro,dc=local
