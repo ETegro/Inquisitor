@@ -1,8 +1,28 @@
+<% hash={} %> 
+
+
 <% for column in Person.content_columns %>
-<p>
-  <b><%= column.human_name %>:</b> <%=h @person.send(column.name) %>
-</p>
+<% hash[column.human_name] = @person.send(column.name) %>
 <% end %>
 
+<p> Login: <%= hash['Login']%> </p>
+<p> Password: <%= hash['Password']%> </p>
+<p> Name: <%= hash['Name']%> </p>
+<p> Email: <%= hash['Email']%> </p>
+<p> Display name: <%= hash['Display name']%> </p>
+<p> Given name: <%= hash['Given name']%> </p>
+<p> Is student: <%= hash['Is student']%> </p>
+<p> Is tester: <%= hash['Is tester']%> </p>
+<p> Is assembler: <%= hash['Is assembler']%> </p>
+<p> Is manager: <%= hash['Is manager']%> </p>
+<p> Is admin: <%= hash['Is admin']%> </p>
+<p> Last login at: <%= hash['Last login at']%> </p>
+<p> Created at: <%= hash['Created at']%> </p>
+<p> Updated at: <%= hash['Updated at']%> </p>
+<p> Remember token expires at: <%= hash['Remember token expires at']%> </p>
+<p> Remember token: <%= hash['Remember token']%> </p>
+<p> Recent days: <%= hash['Recent days']%> </p>
 <%= link_to 'Edit', :action => 'edit', :id => @person %> |
 <%= link_to 'Back', :action => 'list' %>
+
+
