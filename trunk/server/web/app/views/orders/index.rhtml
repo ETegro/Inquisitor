@@ -1,3 +1,7 @@
+<% if logged_in? and ( current_person.admin?  or  current_person.manager?)  -%> <div style="float:left; padding-left:0.5em;">
+  <%= link_to 'New order', :controller => :orders, :action => :new %>
+  </div>
+<% end %>
 <form method="get" style="text-align: right; padding: 0.2em" action="/orders">
 Manager: <%= select :manager, :name, @managers, :selected => @selected_manager %>
 <input type="submit" value="&gt;&gt;" />
