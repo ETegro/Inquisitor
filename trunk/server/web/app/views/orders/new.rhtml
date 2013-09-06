@@ -1,5 +1,5 @@
 <h1>New order</h1>
-
+<% if  logged_in? and ( current_person.admin? or current_person.manager?)
 <%= error_messages_for :order %>
 
 <% form_for (@order, :url => { :action=>'create'} ) do |f| %>
@@ -16,5 +16,5 @@
     <%= f.submit "Create" %>
   </p>
 <% end %>
-
+<% end %>
 <%= link_to 'Back', :action => 'index' %>

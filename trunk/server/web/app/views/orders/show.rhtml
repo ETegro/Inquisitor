@@ -5,7 +5,7 @@
 <tr>
 <td class="panel" style="vertical-align: top">
 
-<% if logged_in? and current_person.admin? -%>
+<% if logged_in? and (current_person.admin? or current_person.manager?) -%>
 
 <% form_for (@order, :url => { :action => 'update', :id => @order.id }, :html => { :method => :put }) do |f| %>
 <table class="bordered">
@@ -56,7 +56,8 @@
 
 <% if @computers.size > 0 %>
 	<td colspan="2"><%= render :partial => 'list_computers' %></td>
-<% elsif logged_in? and current_person.admin? and @computers.size == 0 and @order.order_stages[-1] and @order.order_stages[-1].stage == 'acceptance' %>
+<% elsif logged_in? and (current_person.admin? or current_person.manager?) and @computers.size == 0 and @order.order_stages[-1] and @order.order_stages[-1].stage == 'acceptance' %>
+
 	<td colspan="2" class="panel"><%= render :partial => 'create_computers' %></td>
 <% end %>
 
