@@ -9,7 +9,7 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 32) do
+ActiveRecord::Schema.define(:version => 33) do
 
   create_table "audits", :force => true do |t|
     t.binary   "comparison"
@@ -216,6 +216,7 @@ ActiveRecord::Schema.define(:version => 32) do
     t.string   "remember_token"
     t.boolean  "is_admin",                                 :default => false
     t.integer  "recent_days",                              :default => 3
+    t.boolean  "is_manager",                               :default => false
   end
 
   create_table "person_times", :force => true do |t|
