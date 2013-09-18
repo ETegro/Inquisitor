@@ -1,9 +1,5 @@
 #!/bin/bash -x
 
-DIR=`pwd`
-LIVEDIR="${DIR}/live"
-BUILDDIR="${DIR}/build"
-
 . ${DIR}/config
 
 function clean() {
@@ -26,5 +22,4 @@ function build() {
 	for i in `ls ${BUILDDIR}/packages/`; do
 		cd ${BUILDDIR}/packages/${i}
 		dpkg-buildpackage
-		
 }
