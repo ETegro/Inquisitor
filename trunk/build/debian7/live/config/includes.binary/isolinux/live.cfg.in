@@ -1,0 +1,12 @@
+label live-Inquisitor
+	menu label ^Live (Inquisitor)
+	menu default
+	linux @LINUX@
+	initrd @INITRD@
+	append @APPEND_LIVE@
+
+label live-Inquisitor-failsafe
+	menu label ^Live (Inquisitor failsafe)
+	linux @LINUX@
+	initrd @INITRD@
+	append @APPEND_LIVE_FAILSAFE@

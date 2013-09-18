@@ -1,0 +1,82 @@
+#===============================================================================
+# A build configuration file for Inquisitor
+#
+# Edit to suit your preferences for the build
+#===============================================================================
+
+ARCH="amd64"
+DEB_VERSION="wheezy"
+
+# Inquisitor platform version
+# Displayed everywhere applicable
+INQ_VERSION=3.1-alpha2-jessy
+
+#===============================================================================
+# Client settings
+#===============================================================================
+
+# Flavour of Inquisitor to build
+# Valid values: live, enterprise, standalone, inventory
+FLAVOUR=live
+
+# Target architecture to build client for
+# Valid values: i586, x86_64
+TARGET=x86_64
+
+# Directories to install files into
+BIN_DIR=/usr/bin
+ETC_DIR=/etc/inquisitor
+ifeq ($(TARGET), x86_64)
+LIB_DIR=/usr/lib64/inquisitor
+else
+LIB_DIR=/usr/lib/inquisitor
+endif
+SHARE_DIR=/usr/share/inquisitor
+
+# Einarc modules to build in comma-separated list or 'all' to build everything
+EINARC_MODULES=software
+
+# TTY device to flush all mass progress/debug into
+DEBUG_TTY=/dev/tty2
+
+# Default filesystem. Will be used in several tests where filesystem
+# type is non-critical. Forcing option for mkfs has to be specified,
+# as it is different for different filesystems.
+DEFAULT_FILESYSTEM=ext2
+DEFAULT_FILESYSTEM_FORCE=-F
+
+#===============================================================================
+# Client image settings
+#===============================================================================
+
+# Client image would be built from this system.
+# Valid values: debian
+CLIENT_BASE=debian
+
+# Local build paths
+REPO_HUGE=$(PWD)/repo-huge
+IMAGE_DIR=image
+
+#===============================================================================
+# Client image settings: Debian specific
+#===============================================================================
+
+REPO=http://mirror.yandex.ru/debian
+REPO_MULTIMEDIA=http://mirror.yandex.ru/debian-multimedia
+#REPO="http://ru.archive.ubuntu.com/ubuntu/ precise"
+#REPO_MULTIMEDIA="http://ru.archive.ubuntu.com/ubuntu/ precise universe"
+REPO_BRANCH=stable
+REPO_SECTIONS="main contrib" # non-free
+CUSTOM_KERNEL="" # Just set it to non-empty string and put necessary package to
+                 # IMAGE_DIR directory
+
+#===============================================================================
+# Server settings
+# These are used only in full client-server build
+#===============================================================================
+
+# Server host to deploy client image to
+DEPLOY_HOST=localhost
+
+# Path on DEPLOY_HOST to client image that will be exported using NFS
+DEPLOY_PATH=/inq/root-$(TARGET)
