@@ -1,4 +1,0 @@
-host: domaincontroller.yourcompany.com
-port: 389
-domain: yourcompany.com
-dn: cn=users,dc=yourcompany,dc=com
