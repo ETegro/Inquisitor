@@ -177,6 +177,7 @@ class OrdersController < ApplicationController
   # GET /orders/new
   def new
     @order = Order.new
+    @order.manager = current_person.name
   end
 
   # GET /orders/1;edit
@@ -187,12 +188,26 @@ class OrdersController < ApplicationController
   # POST /orders
   # POST /orders.xml
   def create
-    @order = Order.new(params[:order])
-
-    respond_to do |format|
+      @order = Order.new(params[:order])
+      respond_to do |format|
+      
+	  @order.manager = current_person.name
+	
+      now = Time.new
+      ['ordering', 'warehouse'].each { |stage_name|
+        @order.order_stages << OrderStage.new(
+                :stage => stage_name,
+			    :start => now,
+			    :end => now )
+      }
+	
+	#add order to aceptance stage
+	@order.order_stages<<OrderStage.new(
+			:stage=> 'acceptance',
+			:start=> now)
       if @order.save
         flash[:notice] = 'Order was successfully created.'
-        format.html { redirect_to order_url(@order) }
+        format.html { redirect_to :action => 'show', :id => @order.id }
         format.xml  { head :created, :location => order_url(@order) }
       else
         format.html { render :action => "new" }
@@ -208,7 +223,7 @@ class OrdersController < ApplicationController
 		respond_to do |format|
 			if @order.update_order(params[:order])
 				flash[:notice] = 'Order was successfully updated.'
-				format.html { redirect_to order_url(@order) }
+				format.html { redirect_to :action => 'show', :id => @order.id }
 				format.xml  { head :ok }
 			else
 				format.html { render :action => "edit" }
@@ -312,6 +327,8 @@ class OrdersController < ApplicationController
 			return
 		end
 
+		return redirect_to :controller => 'computers', :action => 'show', :id => @computer_serial.to_i if  @computer_serial.to_i > 0
+	
 		# Prepare selection lists
 		@models = Model.find(:all, :order => 'name').map { |x| [x.name, x.id] }
 		@models.unshift ['', 0]
@@ -327,7 +344,8 @@ class OrdersController < ApplicationController
 			:model_id => @model_id,
 			:component_model_id => @component_model_id,
 			:start_date => @start_date,
-			:end_date => @end_date,
+			:end_date => @end_date
+		#	:component_serial => "%#{@component_serial}%"
 		}
 
 		cond = []
@@ -340,7 +358,7 @@ class OrdersController < ApplicationController
 		cond << '(order_stages.start <= :end_date OR computer_stages.start <= :end_date)' if @end_date
 
 		if @component_serial
-			@computers_by_component_serial = Computer.find_by_sql("SELECT DISTINCT(computers.id) FROM computers INNER JOIN testings ON testings.computer_id=computers.id JOIN components ON components.testing_id=testings.id WHERE components.serial LIKE '%#{ @component_serial.to_i }'").collect{ |id| Computer.find_by_id( id ) }
+			@computers_by_component_serial = Computer.find_by_sql("SELECT DISTINCT(computers.id) FROM computers INNER JOIN testings ON testings.computer_id=computers.id JOIN components ON components.testing_id=testings.id WHERE components.serial LIKE '%#{ @component_serial }%'").collect{ |id| Computer.find_by_id( id ) }
 		end
 
 		if cond.size > 0
@@ -366,6 +384,7 @@ class OrdersController < ApplicationController
 				@computers.select! { |c| computers.include? c }
 			end
 			
+			#HERE
 			redirect_to :action => 'show', :id => @orders[0] if @orders.size == 1 and @computers.size == 0 and not params[:no_redirect] and not @component_serial
 			redirect_to :controller => 'computers', :action => 'show', :id => @computers[0] if @orders.size == 0 and @computers.size == 1 and not params[:no_redirect]
 		end

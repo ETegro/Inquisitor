@@ -1,0 +1,124 @@
+#!/bin/sh -e
+# NAME=Firmware reflashing
+# DESCRIPTION=This test is a part of rather complex Inquisitor's firmware reflashing system. This part do following things: 1) Gets a list of components related only to this computer and needed to be reflashed. There are corresponding firmware/flash version and reflashing image also; 2) Test parses each entity and, depending of component, tries to retrieve it's version (BMC's or BIOS'es version, for example); 3) Compares it with retrieved from server needed value and if they are do not differ - proceed with need component; else - there are two ways: either to reflash it under current GNU/Linux session (to reflash disk controllers with einarc for example), or to ask server to create network bootable file with needed reflasher image; then reboot. After reboot computer will boot up reflasher image (as a rule it is some kind of DOS with batch files and flashers). Server will delete it after boot, to allow Inquisitor booting again. Firmware test will test all of components again and again in cycle until everything's versions will be equal to needed ones, and only then, test will succeed. Sometimes some component's version can not be detected and human must manually somehow check it and allow test to continue.
+# DESTROYS_HDD=false
+# IS_INTERACTIVE=true
+# POWEROFF_DURING_TEST=true
+# VERSION=0.1
+# TAGS=bios,firmware
+# DEPENDS=Mainboard,Disk Controller,BMC
+# VAR=FORCE_FIRMWARES_LIST:string::Forced firmwares list over that sended by server. Newlines replaced by twice doubledots
+
+. _inq-config-global; . $SHARE_DIR/functions-test
+
+exit_handler()
+{
+	[ -r "$FIRMWARES" ] && rm $FIRMWARES
+}
+
+FIRMWARES=`mktemp`
+
+# Get needed firmwares list for current testing computer from server
+get_needed_firmwares_list > $FIRMWARES || test_failed "Unable to get needed firmwares list"
+[ -z "$FORCE_FIRMWARES_LIST" ] || perl -e '@s=split("::",$ENV{FORCE_FIRMWARES_LIST});
+					   for($i=1; $i<$#s+2; $i+=3){
+					   	print "$s[$i-1]::$s[$i]::$s[$i+1]\n" unless $s[$i-1] =~ /^$/;
+					   };' > $FIRMWARES
+
+FIRMWARES_QUANTITY=`cat $FIRMWARES | wc -l`
+[ "$FIRMWARES_QUANTITY" -eq 0 ] && test_succeeded "No firmwares needed to be updated" || true
+
+# Parse each component
+TESTED_QUANTITY=0
+cat $FIRMWARES | while read component; do
+	type=`echo $component | awk -F :: '{print $1}'`
+	version=`echo $component | awk -F :: '{print $2}'`
+	firmware_file=`echo $component | awk -F :: '{print $3}'`
+
+	echo ""
+	echo "Current component: $type"
+
+	# Detect version
+	case $type in
+	"Disk Controller")
+		if [ `einarc -l | wc -l` -eq 0 ]; then
+			print_red_message "Disk controller does not supported by einarc"
+			print_red_message "Do you want to either (s)kip this stage or to (f)orce firmware update?"
+			read choice
+			if [ "$choice" = "s" ]; then
+				current_version=$version
+			else
+				current_version="Unsupported by einarc"
+			fi
+		else
+			einarc_module=`einarc -l | awk '{print $1}' | sed -n '1p'`
+			# Check if there is more than one controller
+			if [ `einarc -l | grep "$einarc_module" | wc -l` -gt 1 ]; then
+				print_red_message "There are more than one disk controller of ony type installed"
+				print_red_message "Currently only some controllers can be flashed automatically"
+				print_red_message "Do you want to either (s)kip this stage or to (f)orce firmware update?"
+				read choice
+				if [ "$choice" = "s" ]; then
+					current_version=$version
+				else
+					for adapter_num in `einarc -l | grep "$einarc_module" | awk '{print $2}'`; do
+						current_version=`component_version "Disk Controller"`
+						if [ "$current_version" = "$version" ]; then
+							true
+						else
+							print_green_message "Trying to update firmware on $adapter_num adapter..."
+							cd $SHARE_DIR/firmwares
+							if einarc -t "$einarc_module" -a $adapter_num firmware write $firmware_file; then
+								true
+							else
+								current_version="Unable to update firmware via einarc."
+								break
+							fi
+						fi
+					done
+					print_green_message "Rebooting for applying hardware changes..."
+					sleep 30
+					hard_reboot
+				fi
+			else
+				current_version=`component_version "Disk Controller"`
+				if [ "$current_version" = "$version" ]; then
+					true
+				else
+					print_green_message "Trying to update firmware..."
+					cd $SHARE_DIR/firmwares
+					if einarc -t "$einarc_module" firmware write $firmware_file; then
+						print_green_message "Rebooting for applying hardware changes..."
+						sleep 30
+						hard_reboot
+					else
+						print_red_message "Failed to update firmware via einarc"
+					fi
+				fi
+			fi
+		fi
+		;;
+	*)
+		current_version=`component_version "$type"`
+		;;
+	esac
+
+	# Reboot with necessary reflasher if needed
+	if [ "$current_version" = "$version" ]; then
+		echo "Needed version \"$version\" found"
+		TESTED_QUANTITY=$(( $TESTED_QUANTITY + 1 ))
+		test_progress $TESTED_QUANTITY $FIRMWARES_QUANTITY
+		continue
+	else
+		true
+	fi
+	print_red_message "Necessary $type firmware version does not found!"
+	print_red_message "Found \"$current_version\", instead of \"$version\""
+	print_red_message "Going to reflash with \"$firmware_file\""
+	prepare_and_boot_from_image "$firmware_file" || test_failed "Unable to boot from image"
+	sleep 30
+	hard_reboot
+done
+
+# If all firmwares are already updates
+test_succeeded

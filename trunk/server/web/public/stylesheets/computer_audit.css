@@ -119,19 +119,19 @@ td#info_tabs table tr td#info_tab_audit a{
 }
 
 .dev_span_good {
-	background-color: #819A8E;
+/*	background-color: #819A8E;*/
 }
 
 .dev_span_bad {
-	background-color: yellow;
+/*	background-color: yellow;*/
 }
 
 .dev_span_chunk {
-	background-color: #AACFBE;
+/*	background-color: #AACFBE;*/
 }
 
 .dev_span_evil {
-	background-color: #ff4e4e;
+/*	background-color: #ff4e4e;*/
 }
 
 #confirmation_comment {

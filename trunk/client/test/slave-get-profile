@@ -1,0 +1,21 @@
+#!/bin/sh -e
+# NAME=slave-get-profile
+# DESCRIPTION=TODO
+# DESTROYS_HDD=false
+# IS_INTERACTIVE=false
+# POWEROFF_DURING_TEST=false
+# VERSION=0.1
+# TAGS=
+# DEPENDS=
+
+. _inq-config-global; . $SHARE_DIR/functions-test
+
+exit_handler()
+{
+	[ -f "$profile" ] && rm -f $profile
+}
+
+profile=`mktemp`
+wait-string | base64 -d > $profile
+test_succeeded
+. $profile

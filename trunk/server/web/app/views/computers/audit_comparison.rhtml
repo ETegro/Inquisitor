@@ -1,8 +1,9 @@
 <table id='components'>
 	<tr>
 		<th class='component_group'>Device</th>
-		<th class='component_db_name'>DB Name</th>
+<!--		<th class='component_db_name'>DB Name</th>
 		<th class='component_db_count' title='DB Quantity'>DB #</th>
+-->
 		<th class='component_name'>Detect Name</th>
 		<th class='component_count' title='Detect Quantity'>Detect #</th>
 	</tr>
@@ -14,8 +15,9 @@
 			<% db_dev = @comparison[group][:missing][i] ; dev = @comparison[group][:extra][i] %>
                         <tr class='component_<%= style % 2 == 0 ? 'even' : 'odd' %>'>
                         <td class='component_group'><%= group_name ? (group_name = nil ; group) : nil %></td>
-                        <td class='component_db_name'><%= db_dev[:line][:name] %><%= sku_tag(db_dev[:line]) %></td>
+<!--                        <td class='component_db_name'><%= db_dev[:line][:name] %><%= sku_tag(db_dev[:line]) %></td>
                         <td class='component_db_count'><%= db_dev[:line][:qty] %></td>
+-->
                         <td class='component_name'><%= content_tag(:span, "#{ dev[:vendor] } #{ dev[:name] }", :class => 'dev_span_evil') %></td>
                         <td class='component_count'><%= content_tag(:span, dev[:count], :class => db_dev[:line][:qty] != dev[:count] && 'dev_span_evil') %></td>
                         </tr>
@@ -27,8 +29,9 @@
 		<% @comparison[group][:missing].each do |dev| %>
 			<tr class='component_<%= style % 2 == 0 ? 'even' : 'odd' %>'>
 			<td class='component_group'><%= group_name ? (group_name = nil ; group) : nil %></td>
-			<td class='component_db_name'><%= dev[:line][:name] %><%= sku_tag(dev[:line]) %></td>
+<!--			<td class='component_db_name'><%= dev[:line][:name] %><%= sku_tag(dev[:line]) %></td>
 			<td class='component_db_count'><%= dev[:line][:qty] %></td>
+-->
 			<td class='component_name' />
 			<td class='component_count' />
 			</tr>
@@ -40,8 +43,9 @@
 			<% spans = Mykit::Comparison.post_process(pair) %>
 			<tr class='component_<%= style % 2 == 0 ? 'even' : 'odd' %>'>
 			<td class='component_group'><%= group_name ? (group_name = nil ; group) : nil %></td>
-			<td class='component_db_name'><%= pair[:db][:line][:name] %><%= sku_tag(pair[:db][:line]) %></td>
+<!--			<td class='component_db_name'><%= pair[:db][:line][:name] %><%= sku_tag(pair[:db][:line]) %></td>
 			<td class='component_db_count'><%= pair[:db][:line][:qty] %></td>
+-->
 			<td class='component_name'><%= dev_to_spans("#{ pair[:detect][:vendor] } #{ pair[:detect][:name] }", spans) %></td>
 			<td class='component_count'><%= content_tag(:span, pair[:detect][:count], :class => pair[:db][:line][:qty] != pair[:detect][:count] && 'dev_span_evil') %></td>
 			</tr>
@@ -52,8 +56,9 @@
 		<% @comparison[group][:extra].each do |dev| %>
 			<tr class='component_<%= style % 2 == 0 ? 'even' : 'odd' %>'>
 			<td class='component_group'><%= group_name ? (group_name = nil ; group) : nil %></td>
-			<td class='component_db_name' />
+<!--			<td class='component_db_name' />
 			<td class='component_db_count' />
+-->
 			<td class='component_name'><%= "#{ dev[:vendor] } #{ dev[:name] }" %></td>
 			<td class='component_count'><%= dev[:count] %></td>
 			</tr>

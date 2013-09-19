@@ -1,0 +1,11 @@
+#!/bin/sh
+
+export PATH=/sbin:/usr/sbin:/usr/local/sbin:/bin:/usr/bin:/usr/local/bin:/usr/X11R6/bin
+export HOME=/home
+
+mount -t tmpfs -o rw -n tmpfs /tmp
+mount -t sysfs -n sysfs /sys
+mount -t proc -n proc /proc
+mount -t nfs -n -o nolock 192.168.10.69:/srv/nfs/firmwares /usr/share/inquisitor/firmwares
+modprobe usbhid
+bash

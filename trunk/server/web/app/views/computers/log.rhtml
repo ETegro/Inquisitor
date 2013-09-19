@@ -1,1 +1,6 @@
-<iframe id="log_area" src="/HOSTS/c<%= @computer.id %>" />
+<% if File.exist?("/var/log/HOSTS/c" + @computer.id.to_s + ".gz") then %>
+        <% zcat = `zcat /var/log/HOSTS/c#{ @computer.id.to_s }.gz | perl -pe 's/\n/\n<br>/' | base64` %>
+        <iframe id="log_area" src="data:text/html;base64,<%= zcat %>">
+<% else %>
+        <iframe id="log_area" src=/HOSTS/c<%= @computer.id %> />
+<% end %>

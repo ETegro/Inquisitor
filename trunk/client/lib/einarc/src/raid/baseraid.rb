@@ -30,7 +30,7 @@ module RAID
 		}
 
 		METHODS = {
-			'adapter' => %w(info restart get set),
+			'adapter' => %w(info restart get set expanders),
 			'log' => %w(clear list test discover dump),
 			'physical' => %w(list smart get set),
 			'logical' => %w(list add delete clear get set hotspare_add hotspare_delete physical_list),
@@ -114,6 +114,12 @@ module RAID
 				else
 					puts "#{k}\t#{v}"
 				end
+			}
+		end
+
+		def adapter_expanders
+			_adapter_expanders.each { |enc|
+				puts "#{enc[0]}\t#{enc[1]}\n"
 			}
 		end
 
@@ -355,13 +361,17 @@ module RAID
 			return nil
 		end
 
-		# Read single line from block device-related files in sysfs
-		def physical_read_file(device, source)
+		def sysfs_read_file(path)
 			begin
-				return File.open("/sys/block/#{device.gsub(/^\/dev\//, '')}/#{source}", "r").readline.chop.gsub(/[^[:print:]]/,"")
+				return File.open(path, "r").readline.chop.gsub(/[^[:print:]]/,"")
 			rescue Errno::ENOENT
 				return nil
 			end
+		end
+
+		# Read single line from block device-related files in sysfs
+		def physical_read_file(device, source)
+			return sysfs_read_file( "/sys/block/#{device.gsub(/^\/dev\//, '')}/#{source}" )
 		end
 
 		def parse_smart_output( smart_output )

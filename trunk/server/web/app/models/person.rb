@@ -4,6 +4,9 @@ class Person < ActiveRecord::Base
 		is_admin
 	end
 
+	def manager?
+		is_manager
+	end
 	def tester?
 		is_tester
 	end

@@ -71,14 +71,38 @@ class StatisticsController < ApplicationController
 	end
 
 	def rma
-		@rma_stat = Model.find_by_sql("Select m.*, count(c.id) total, count(s1.computer_id) checking, count(s2.computer_id) testing, avg(s1.d1) cavg, avg(s2.d2) tavg from models as m join computers as c on m.id = c.model_id left join ( Select computer_id, datediff(end, now() - interval 3 year) d1 from computer_stages where stage = \'checking\' group by computer_id having min( end) > now() - interval 3 year ) as s1 on c.id = s1.computer_id left join ( Select computer_id, datediff(end, now() - interval 3 year) d2 from computer_stages where stage = \'testing\' and computer_id not in ( Select computer_id from computer_stages where stage = \'checking\') group by computer_id having min( end) > now() - interval 3 year ) as s2 on c.id=s2.computer_id group by m.id order by m.name;")
-	end
+	@rma_stat = Model.find_by_sql("Select m.*, count(c.id) total, count(s1.computer_id) checking, count(s2.computer_id) testing, avg(s1.d1) cavg, avg(s2.d2) tavg from models as m join computers as c on m.id = c.model_id left join ( Select computer_id, datediff(end, now() - interval 3 year) d1 from computer_stages where stage = \'checking\' group by computer_id having min( end) > now() - interval 3 year ) as s1 on c.id = s1.computer_id left join ( Select computer_id, datediff(end, now() - interval 3 year) d2 from computer_stages where stage = \'testing\' and computer_id not in ( Select computer_id from computer_stages where stage = \'checking\') group by computer_id having min( end) > now() - interval 3 year ) as s2 on c.id=s2.computer_id group by m.id order by m.name;")
+        end
 
 	def assembly
 		get_dates
-		@assembly_stat = ComputerStage.find_by_sql("Select DATE(cs.end) ddmmyy, COUNT(cs.end) comp_count, SUM(m.complexity)/60.0 hours, COUNT(DISTINCT(csa.person_id)) asmbl_count, SUM(m.complexity)/(60.0*8*COUNT(DISTINCT(csa.person_id))) coef from computer_stages AS cs JOIN computers AS c ON cs.computer_id=c.id JOIN models AS m on c.model_id=m.id JOIN computer_stages AS csa on cs.computer_id=csa.computer_id where cs.stage=\"checking\" AND csa.stage=\"assembling\" AND cs.start > \'#{@from_date}\' AND cs.end < \'#{@to_date}\' GROUP BY DATE(cs.end);")
+        @assembly_stat = ComputerStage.find_by_sql("Select DATE(cs.end) ddmmyy, GROUP_CONCAT(DISTINCT c.id) comp, COUNT(cs.end) comp_count, SUM(m.complexity)/60.0 hours, COUNT(DISTINCT(csa.person_id)) asmbl_count, SUM(m.complexity)/(60.0*8*COUNT(DISTINCT(csa.person_id))) coef, GROUP_CONCAT(DISTINCT p.display_name) c, GROUP_CONCAT(DISTINCT pa.display_name) a, GROUP_CONCAT(DISTINCT pt.display_name) t from computer_stages AS cs JOIN computers AS c ON cs.computer_id=c.id JOIN models AS m on c.model_id=m.id JOIN computer_stages AS csa on cs.computer_id=csa.computer_id JOIN computer_stages AS cst on cs.computer_id=cst.computer_id JOIN people p ON cs.person_id=p.id JOIN people pa ON csa.person_id=pa.id JOIN people pt ON cst.person_id=pt.id where cs.stage=\"checking\" AND csa.stage=\"assembling\" AND cst.stage=\"testing\" AND cs.start > \'#{@from_date}\' AND cs.end < \'#{@to_date}\' GROUP BY DATE(cs.end);")
+
+		@comps = 0
 		@k = 0
-		@assembly_stat.each { |i| @k += i.coef.to_f if i.coef.to_f > 1}
+		@assemblers = {}
+                @assembly_stat.each do |i|
+						@comps += i.comp_count.to_i
+                        if i.coef.to_f > 1
+                                c = i.coef.to_f - 1
+                                @k += (i.coef.to_f-1)
+                                asm = (i.c.split(',').concat(i.a.split(',')).concat(i.t.split(','))).uniq
+                                asm.each { |a| @assemblers.has_key?(a) ? @assemblers[a] += c : @assemblers[a] = c }
+
+                        end
+                end
+	end
+
+        def order_stages
+                get_dates
+		@order_stat = OrderStage.find_by_sql("Select o.id id, o.buyer_order_number n, os.end ord_end, os.start ord_start, osw.start osw_start, osw.end osw_end, osa.start osa_start, osa.end osa_end, MAX(csa.end) asm_end, MIN(csa.start) asm_start, MAX(cst.end) test_end, MIN(cst.start) test_start, MAX(csc.end) check_end, MIN(csc.start) check_start from orders o JOIN order_stages os ON o.id=os.order_id LEFT JOIN (select order_id, end, start from order_stages where stage='acceptance') osa ON o.id=osa.order_id LEFT JOIN (select order_id, end, start from order_stages where stage='warehouse') osw ON o.id=osw.order_id LEFT JOIN computers c ON o.id=c.order_id LEFT JOIN (select computer_id, end, start from computer_stages where stage='assembling') csa ON c.id=csa.computer_id LEFT JOIN (select computer_id, end, start from computer_stages where stage='testing') cst ON c.id=cst.computer_id LEFT JOIN (select computer_id, end, start from computer_stages where stage='checking') csc ON c.id=csc.computer_id where os.stage='ordering' AND os.start > \'#{@from_date}\' AND os.start < \'#{@to_date}\' group by o.id order by n;")
+	
+	end
+
+	def computer_list
+		@comp_ids = params[:ids].split(',')
+		@co_co = Model.find_by_sql("Select m.name model, c.id comp_id, ap.name assembler, tp.name tester, cp.name checker from computers c LEFT JOIN models m ON c.model_id=m.id JOIN (Select p.display_name name, cs.computer_id id from computer_stages cs JOIN people p ON cs.person_id=p.id where cs.stage='assembling') ap ON c.id=ap.id JOIN (Select p.display_name name, cs.computer_id id from computer_stages cs JOIN people p ON cs.person_id=p.id where cs.stage='testing') tp ON c.id=tp.id JOIN (Select p.display_name name, cs.computer_id id from computer_stages cs JOIN people p ON cs.person_id=p.id where cs.stage='checking') cp ON c.id=cp.id where c.id in (#{@comp_ids.join(",")}) order by model;")
 	end
 
 end
+

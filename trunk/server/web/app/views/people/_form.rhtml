@@ -7,7 +7,7 @@
 <p><label for="person_name">Name</label><br/>
 <%= text_field 'person', 'name'  %></p>
 
-<p><label for="person_display_name">Display name</label><br/>
+<p><label for="display_name">Display name</label><br/>
 <%= text_field 'person', 'display_name'  %></p>
 
 <p><label for="person_is_tester">Is tester</label><br/>
@@ -19,6 +19,8 @@
 <p><label for="person_is_admin">Admin:</label><br/>
 <select id="person_is_admin" name="person[is_admin]"><option value="false">False</option><option value="true">True</option></select></p>
 
+<p><label for="person_is_manager">Manager</label><br/>
+  <select id="person_is_manager" name="person[is_manager]"><option value="false" selected>False</option><option value="true">True</option></select></p>
 <p><label for="person_is_student">Student</label><br/>
 <select id="person_is_student" name="person[is_student]"><option value="false">False</option><option value="true">True</option></select></p>
 

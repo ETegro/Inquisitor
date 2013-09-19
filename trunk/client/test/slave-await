@@ -1,0 +1,23 @@
+#!/bin/sh -e
+# NAME=slave-await
+# DESCRIPTION=TODO
+# DESTROYS_HDD=false
+# IS_INTERACTIVE=false
+# POWEROFF_DURING_TEST=false
+# VERSION=0.1
+# TAGS=
+# DEPENDS=
+# VAR=GROUP_ID:int:0:TODO
+# VAR=WAITTIME:int:30:TODO
+# VAR=SLAVES:int:1:TODO
+
+. _inq-config-global; . $SHARE_DIR/functions-test
+
+SLAVES_FOUND=0
+while [ "$SLAVES_FOUND" -lt $SLAVES ]; do
+	SLAVES_FOUND=`get_pool $GROUP_ID | wc -l`
+	echo "Slaves found: $SLAVES_FOUND, but need $SLAVES"
+	sleep $WAITTIME
+done
+
+test_succeeded

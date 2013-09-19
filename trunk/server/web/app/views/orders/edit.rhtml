@@ -1,17 +1,22 @@
-<h1>Editing order</h1>
+<h1>Edit order</h1>
 
 <%= error_messages_for :order %>
 
-<% form_for(:order, :url => order_path(@order), :html => { :method => :put }) do |f| %>
+<% form_for (@order, :url => { :action => 'update', :id => @order.id }, :html => { :method => :put }) do |f| %>
+<table class="bordered">
+<tr><th colspan="2">Edit order</th></tr>
+<tr><td>Title:</td><td><%= f.text_field :title %></td></tr>
+<tr><td>Code:</td><td><%= f.text_field :code %></td></tr>
+<tr><td>Customer:</td><td><%= f.text_field :customer %></td></tr>
+<tr><td>Manager:</td><td><%= f.text_field :manager %></td></tr>
+<tr><td>Comment:</td><td><%= f.text_field :comment %></td></tr>
+<tr><td>Buyer order #:</td><td><%= f.text_field :buyer_order_number %></td></tr>
+<tr><td>Mfg task #:</td><td><%= f.text_field :mfg_task_number %></td></tr>
+<tr><td>Mfg report #:</td><td><%= f.text_field :mfg_report_number %></td></tr>
+</table>
   <p>
-    <b>Doc no</b><br />
-    <%= f.text_field :doc_no %>
-  </p>
-
-  <p>
-    <%= submit_tag "Update" %>
+    <%= f.submit "Update" %>
   </p>
 <% end %>
 
-<%= link_to 'Show', order_path(@order) %> |
-<%= link_to 'Back', orders_path %>
+<%= link_to 'Back', :action => 'show', :id => @order.id %>

@@ -22,8 +22,13 @@ einarc_detect()
 			'adaptec_arcconf') CTRL_VENDOR='Adaptec';;
 			'software') CTRL_VENDOR='mdadm';;
 		esac
-		echo 'Disk Controller' "$CTRL_VENDOR" "$CTRL_MODEL" "$CTRL_SERIAL" - einarc >> $HOME/debug.log
-		[ "$CTRL_VENDOR" = "mdadm" ] || add_component 'Disk Controller' "$CTRL_VENDOR" "$CTRL_MODEL" "$CTRL_SERIAL" "$CTRL_VERSION"
+
+		if [ "$CTRL_VENDOR" = "mdadm" ]; then
+			echo 'Disk Controller' "$CTRL_VENDOR" "$CTRL_MODEL" "$CTRL_SERIAL" - einarc >> $HOME/debug.log
+		else
+			echo 'Disk Controller' "$CTRL_VENDOR" "$CTRL_MODEL" "$CTRL_SERIAL" - einarc >> $HOME/debug.log
+			add_component 'Disk Controller' "$CTRL_VENDOR" "$CTRL_MODEL" "$CTRL_SERIAL" "$CTRL_VERSION"
+		fi
 	done
 }
 

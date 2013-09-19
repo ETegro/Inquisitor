@@ -1,8 +1,13 @@
+<% if logged_in? and ( current_person.admin?  or  current_person.manager?)  -%> <div style="float:left; padding-left:0.5em;">
+  <%= link_to 'New order', :controller => :orders, :action => :new %>
+  </div>
+<% end %>
 <form method="get" style="text-align: right; padding: 0.2em" action="/orders">
 Manager: <%= select :manager, :name, @managers, :selected => @selected_manager %>
 <input type="submit" value="&gt;&gt;" />
 </form>
 
+<% current_day_after_new_year = (Time.now() - Time.parse( "#{Time.now().year()}-#{Time.now().month()}-01" )).to_i + 1%>
 <table class="order_staging" border='1'>
 	<tr>
 		<th width="14%">Ordering</th>
@@ -19,6 +24,8 @@ Manager: <%= select :manager, :name, @managers, :selected => @selected_manager %
 		<% if ost.length > 0 %>
 			<table width="100%">
 				<%	ost.each { |o| %>
+				<!--		We not not want orders before New Year -->
+				<% 	next if ( o.from_delay.to_i > 2592000 )  %><%#current_day_after_new_year - o.from_delay.to_i < 0 ) %>
 				<tr>
 					<td class="order_cell">
 						<a href="<%= url_for(:action => 'show', :controller => 'orders', :id => o) %>">
@@ -28,7 +35,7 @@ Manager: <%= select :manager, :name, @managers, :selected => @selected_manager %
 <%						if i == 3 or i == 4 or i == 5 %>
 							<span class="computers"><% qt = o.comp_qty.to_i > 7 ? 1 : o.comp_qty.to_i; qt.times { %><%= image_tag 'computer.png', :style => 'vertical-align: middle' %><% } %><%= "&times;#{o.comp_qty}" if o.comp_qty.to_i > 7 %></span>
 <%						end %>
-							<span class="timer"><%= format_delta1(o.from_delay.to_i) %></span>
+							<span class="timer"><%= format_delta1(o.from_delay.to_i) %><%= o.from_delay.to_i%></span>
 						</a>
 					</td>
 				</tr>

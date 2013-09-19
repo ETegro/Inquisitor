@@ -10,7 +10,8 @@ BIN_FILES=\
 	src/einarc-install \
 	src/raid-wizard-passthrough \
 	src/raid-wizard-optimal \
-	src/raid-wizard-clear
+	src/raid-wizard-clear \
+	raid-hdd-revision
 
 install:
 	if [ -z "$(EINARC_LIB_DIR)" ]; then echo 'Run ./configure first!'; false; fi

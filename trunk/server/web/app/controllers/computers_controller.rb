@@ -113,6 +113,9 @@ class ComputersController < ApplicationController
 			access_denied; return
 		end
 
+		@computer = Computer.find(params[:id])
+		@assembler_map = Person.find_all_by_is_assembler(true).collect { |p| [p.display_name, p.id] } unless @computer.assembler
+
 		prepare_computer_and_testing
 		@confirmation = params[:confirmation].to_i
 		@comment = params[:comment] || ''
@@ -133,11 +136,19 @@ class ComputersController < ApplicationController
 		@comment = params[:comment] || ''
 		@close = params[:close]
 		@audit = @testing.audit
+		@assembler_map = Person.find_all_by_is_assembler(true).collect { |p| [p.display_name, p.id] } unless @computer.assembler
 		if @audit.confirmation 
 			flash[:error] = "Testing confirmed already!" 		
 			render(:layout => 'popup', :action => 'audit_popup')
 			return
 		end
+
+		if params[:assembler].blank? and @computer.assembler.blank?
+                        flash[:error] = "Select assembler"
+                        render(:layout => 'popup', :action => 'audit_popup')
+                        return
+		end
+
 		@audit.confirmation = @confirmation
 		@audit.confirmation_date = Time.new
 		@audit.comment = @comment
@@ -147,6 +158,10 @@ class ComputersController < ApplicationController
 			render(:layout => 'popup', :action =>  'audit_popup')
 			return
 		end
+
+		@computer.set_assembler(params[:assembler]) unless @computer.assembler
+                @computer.set_tester(current_person.id) unless @computer.tester
+
 		Waitstring.send_to_computer(@computer, @confirmation == 1 ? 'OK' : 'ERROR', @@default_config)
 		render(:layout => 'popup')
 	end
@@ -253,12 +268,12 @@ class ComputersController < ApplicationController
 		prepare_computer_and_testing
 		@testing ? @components = @testing.components : @components = []
 		@components.each { |c| c.model.group.name = Mykit::Keywords::GROUP_TRANS[c.model.group.name] if c.model.group and Mykit::Keywords::GROUP_TRANS[c.model.group.name] }
-		lines = @computer.order.order_lines
-		unless lines.blank?
-			min = lines.inject(lines.first.qty) { |i, j| i > j.qty ? j.qty : i } 
-			lines.each { |l| l.qty /= min }	
-		end
-		@items = lines.inject({}) { |h, l| h.merge({ l => Mykit::Parser.parse(l.name, l.sku) }) } 
+#		lines = @computer.order.order_lines
+#		unless lines.blank?
+#			min = lines.inject(lines.first.qty) { |i, j| i > j.qty ? j.qty : i } 
+#			lines.each { |l| l.qty /= min }	
+#		end
+		@items = {}# lines.inject({}) { |h, l| h.merge({ l => Mykit::Parser.parse(l.name, l.sku) }) } 
 		@comparison = Mykit::Comparison.compare(@items, @components)
 		@audit = Audit.new
 		@audit.comparison = dump_comparison(@comparison)
@@ -818,6 +833,39 @@ set timefmt \"%s\""
 		redirect_to :action => 'list'
 	end
 
+	def prepare_and_boot_from_image
+		image = params[:image]
+		@computer = Computer.find(params[:id])
+		image = "rs130-#{ @computer.id }"
+		@testing = @computer.last_testing
+
+		@macs = Component.find(:all, :include => :model, :conditions => ['testing_id=? AND component_group_id=?', @testing.id, ComponentGroup.find_by_name('NIC')]).map { |x| x.serial }
+		@macs.collect! { |mac| mac.gsub(/:/,'-') }
+
+		to_delete = @macs.collect { |mac| "pxelinux.cfg/01-" + mac }.join(" ")
+
+		# Here is image generation
+		`/root/rs130/do #{ @computer.id }`
+		`mv /root/rs130/changed #{TFTP_DIR}/firmwares/#{image}`
+
+		filesize = File.size("#{TFTP_DIR}/firmwares/#{image}")
+		add_options = (filesize > 2880*2 and filesize % 1024**2 == 0) ? ("floppy c=" + (filesize / 1024**2.to_i).to_s) + " s=32 h=64" : ""
+
+		@macs.each { |mac|
+			cfgfile = File.new("#{TFTP_DIR}/pxelinux.cfg/01-#{mac}", "w")
+			cfgfile.puts <<__EOF__
+##{to_delete}
+default firmware
+label firmware
+ kernel memdisk
+ append initrd=firmwares/#{image} #{add_options}
+__EOF__
+			cfgfile.close
+		}
+
+		head(:status => 200)
+	end
+
 	def boot_from_image
 		image = params[:image]
 		@computer = Computer.find(params[:id])
@@ -842,6 +890,35 @@ __EOF__
 			cfgfile.close
 		}
 
+		head(:status => 200)
+	end
+
+	def get_sutid
+		render :text => Computer.find(params[:id]).sut_id.to_s
+	end
+
+	def get_pool
+		@pool = Pool.find_all_by_group_id(params[:id])
+		result = @pool ? @pool.collect { |p| "#{p.computer_id}\t" + p.ips.join("\t") }.join("\n") : ""
+		render :text => result + "\n"
+	end
+
+	def add_to_pool
+		@computer = Computer.find(params[:id])
+		@group_id = params[:group_id]
+		@ips = params[:ips].split(",")
+		pool = Pool.new( :computer_id => @computer.id, :group_id => @group_id )
+		pool.save!
+		@ips.map{ |ip| PoolIp.find_or_create_by_pool_id_and_ip( pool.id, ip ) }
+		head(:status => 200)
+	end
+
+	def pool_clear
+		@group_id = params[:id]
+		Pool.find_all_by_group_id( @group_id ).map{ |p|
+			PoolIp.find_all_by_pool_id( p.id ).map { |pip| PoolIp.delete( pip.id ) }
+			Pool.delete( p.id )
+		}
 		head(:status => 200)
 	end
 
@@ -1008,7 +1085,7 @@ __EOF__
 
 		ccp = components.dup
 		return true unless testing.components.inject(true) { |b, cmp|
-			b && ccp.delete(ccp.find(:all) { |h|
+			b && ccp.delete(ccp.find() { |h|
 				(h[:vendor] == cmp.model.vendor && h[:model] == cmp.model.name) ||
 				(!h[:serial].blank? && h[:serial] == cmp.serial) ||
 				(!h[:version].blank? && h[:version] == cmp.serial)

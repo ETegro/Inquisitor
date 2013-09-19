@@ -27,5 +27,5 @@ config.action_view.cache_template_loading            = true
 # Enable threaded mode
 # config.threadsafe!
 
-TFTP_DIR = "/srv/tftpboot"
+TFTP_DIR = "/srv/tftp"
 FIRMWARES_DIR = "/inq/firmwares"

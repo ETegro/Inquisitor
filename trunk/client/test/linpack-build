@@ -1,0 +1,30 @@
+#!/bin/sh -ex
+# NAME=Linpack build
+# DESCRIPTION=
+# DESTROYS_HDD=false
+# IS_INTERACTIVE=false
+# POWEROFF_DURING_TEST=false
+# VERSION=0.1
+# TAGS=
+# DEPENDS=
+
+. _inq-config-global; . $SHARE_DIR/functions-test
+
+exit_handler()
+{
+	[ -d "$TMP_DIR" ] && rm -fr $TMP_DIR
+}
+
+TMP_DIR=`mktemp -d`
+
+echo -n "Copying xhpl source code..."
+cp -r $SHARE_DIR/test/additional/xhpl/* $TMP_DIR/
+echo_success
+
+pushdq $TMP_DIR
+print_red_message "Bulding up xhpl"
+./build_xhpl.sh >$DEBUG_TTY 2>$DEBUG_TTY || test_failed "xhpl building failed"
+cp xhpl /tmp
+popdq
+
+test_succeeded

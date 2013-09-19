@@ -21,12 +21,22 @@ print_green_message 'Detects finished'
 # ===========================================================================
 
 print_red_message 'Starting self-identification'
-COMPUTER_ID=`inq-self-id`
+SELF_ID_ADDITIONAL=`sed -n 's/^.*selfid=\([^ ]*\).*$/\1/p' < /proc/cmdline`
+COMPUTER_ID=`ADDITIONAL=$SELF_ID_ADDITIONAL inq-self-id`
 [ -n "$COMPUTER_ID" ] || fatal_failure 'Self-identification'
+sutid=`get_sutid` || true
+echo "SUT: $sutid"
+if [ -n "$sutid" -a "$sutid" -gt "0" ]; then
+	COMPUTER_ID=$sutid
+	sutid=true
+else
+	echo "I am slave"
+	sutid=false
+fi
 export COMPUTER_ID
 
 # Reporting IP-address to the server
-publish_my_ip || fatal_failure 'IP-address update'
+$sutid || publish_my_ip || fatal_failure 'IP-address update'
 
 # ===========================================================================
 # Start logging
@@ -57,27 +67,19 @@ fi
 
 watchdog_start
 
-# ===========================================================================
-# Submit configuration by REST
-# ===========================================================================
+if $sutid; then
+	true
+else
+	submit_components $HOME/components.xml
 
-submit_components $HOME/components.xml
+	print_red_message 'Starting monitorings'
+	inq-monitoring
+	print_green_message 'Monitorings were started'
 
-# ===========================================================================
-# Starting monitorings
-# ===========================================================================
-
-print_red_message 'Starting monitorings'
-inq-monitoring
-print_green_message 'Monitorings were started'
-
-# ===========================================================================
-# Starting software detects
-# ===========================================================================
-
-print_red_message 'Starting software detects'
-inq-software-detect
-print_green_message 'Software detects finished'
+	print_red_message 'Starting software detects'
+	inq-software-detect
+	print_green_message 'Software detects finished'
+fi
 
 # ===========================================================================
 # Run all tests
