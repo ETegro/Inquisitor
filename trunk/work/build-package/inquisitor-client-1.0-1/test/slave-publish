@@ -1,0 +1,16 @@
+#!/bin/sh -e
+# NAME=slave-publish
+# DESCRIPTION=TODO
+# DESTROYS_HDD=false
+# IS_INTERACTIVE=false
+# POWEROFF_DURING_TEST=false
+# VERSION=0.1
+# TAGS=
+# DEPENDS=
+# VAR=GROUP_ID:int:0:TODO
+
+. _inq-config-global; . $SHARE_DIR/functions-test
+
+publish_slave $GROUP_ID `ip -o address | perl -e 'print join ",", grep { s/^.*eth.*\sinet (.*)\/\d+\s.*$/$1/ and chop } <>'`
+
+test_succeeded

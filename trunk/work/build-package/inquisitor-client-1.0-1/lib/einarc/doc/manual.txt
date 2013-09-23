@@ -1,0 +1,331 @@
+= Einarc: Reference manual
+
+:Revision: {include:VERSION}
+
+== Concept
+
+Hardware RAID controllers are complex devices: essentially, it's a
+computer inside a computer. It has it's own processor (or may be
+processors), it usually has it's own RAM, and, most important, it runs
+its own software, which is usually a fairly complex operating system
+that manages physical discs, hides all the RAID magic behind the
+curtains and allows the host operating system to see only few logical
+discs.
+
+Unfortunately, most of the RAID controllers are proprietary. It's a
+well-known fact that physical discs used on controller A are
+incompatible with some other controller B (even worse, they can be
+incompatible between various revisions of firmware of controller A).
+RAID's firmware hides all the intricate management of discs from the
+system administrator. Administrator can control RAID using either:
+
+* BIOS OPROM, which is available by pressing some magic key when the
+computer's booting.
+  - *Pros*: it's basic and solid method, it works, it doesn't require
+     any OS installed (can be done before OS installation), it works
+     even if OS is broken, etc.
+  - *Cons*: it requires rebooting of computer when trying to edit RAID
+     or even to check/monitor its state (which is hard to do remotely
+     without KVM-over-IP or similar solution), it requires manual
+     intervention, it's not scriptable (= it's hard to create the same
+     RAID configuration on 1000 machines), and, most of all, every
+     RAID controller model or vendor has his own version of such OPROM
+     utility, incompatible with each other even in terms they use.
+* Some management utilities, running in OS. Such utilities are mostly
+proprietary, provided by vendors, available in binary-only form.
+  - *Pros*: they usually include command-line interface (they're
+    scriptable), they're suitable to call regularly and automatically
+    to monitor status of discs, they don't require rebooting, etc.
+  - *Cons*: of course, they require booted OS to run, and, worst of
+    all, they're also very incompatible with each other.
+
+Einarc project tries to solve such problem: provide a *unified, solid
+interface to manage all possible storage devices*.
+
+== Architecture
+
+Einarc unifies various RAIDs and storage devices, providing a
+<<object_interface,simple object interface>> for end-user. Inside, it
+works as a proxy, translating commands from that object interface to
+RAID-specific commands for it's proprietary CLI, and back, it
+translates response from proprietary CLI into unified answer.
+
+.Einarc architecture diagram
+image::images/einarc-architecture.png[Einarc architecture diagram]
+Support for various RAIDs is implemented as classes. Each class has to
+implement a couple of methods that would translate requests.
+
+* Common unit of size used is Megabyte = 1024 * 1024 bytes. Various
+  adapters provide various interfaces and size units, so X megabytes
+  on one adapter may differ from X megabytes on some other adapter.
+
+== Supported devices
+
+Currently, there are following modules available:
+
+* *adaptec_aaccli* -- supports older Adaptec SCSI RAID controllers, such
+as Adaptec SCSI RAID 2230SLP, Adaptec SCSI RAID 2130SLP, Adaptec SCSI
+RAID 2120S, Adaptec SCSI RAID 2020ZCR, Adaptec SCSI RAID 2025ZCR.
+* *adaptec_arcconf* -- supports newer Adaptec SAS/SATA RAID controllers,
+such as Adaptec RAID 5405, Adaptec RAID 5445, Adaptec RAID 5805, Adaptec
+RAID 5085, Adaptec RAID 51245, Adaptec RAID 51645, Adaptec RAID 52445,
+Adaptec RAID 3405, Adaptec RAID 3085, Adaptec RAID 3805, Adaptec RAID
+31205, Adaptec RAID 31605, Adaptec RAID 2405, Adaptec RAID 2045, Adaptec
+RAID 4000, Adaptec RAID 4800SAS, Adaptec RAID 4805SAS.
+* *amcc* -- supports all AMCC/3ware controllers, such as 3ware 7000
+series, 3ware 8000 series, 3ware 9690SA, 3ware 9650SE, 3ware 9550SX,
+3ware 9500S, 3ware 8506.
+* *areca* -- supports all Areca SATA RAID controllers, such as ARC-1110,
+ARC-1120, ARC-1130, ARC-1160, ARC-1130ML, ARC-1160ML, ARC-1170,
+ARC-1200, ARC-1210, ARC-1220, ARC-1230, ARC-1260, ARC-1231ML,
+ARC-1261ML, ARC-1280ML, ARC-1280.
+* *lsi_megacli* -- supports newer LSI MegaRAID SAS/SATA RAID controllers, such
+as LSI MegaRAID SAS 8208ELP, LSI MegaRAID SAS 8208XLP, LSI MegaRAID SAS
+8204ELP, LSI MegaRAID SAS 8204XLP, LSI MegaRAID SAS 84016E, LSI MegaRAID
+SAS 8704ELP, LSI MegaRAID SAS 8708ELP, LSI MegaRAID SAS 8300XLP, LSI
+MegaRAID SAS 8708EM2, LSI MegaRAID SAS 8888ELP, LSI MegaRAID SAS
+8880EM2, as well as rebranded copies of these controllers from Dell, HP
+and Intel, as well as all on-board or daughterboard products based on
+LSI SAS 1078 chipset.
+* *lsi_megarc* -- support older LSI MegaRAID SCSI/SATA RAID controllers,
+such as  LSI MegaRAID SATA 150-4 (523), LSI MegaRAID SATA 150-6 (523),
+LSI MegaRAID SATA 300-8X, LSI MegaRAID SATA 300-8XLP, LSI MegaRAID SATA
+300-4XLP, LSI MegaRAID SCSI 320-0 (520-0 CH), LSI MegaRAID SCSI 320-0X
+(530), LSI MegaRAID SCSI 320-1 (520-1CH), LSI MegaRAID SCSI 320-1LP
+(520-1 CH LP), LSI MegaRAID SCSI 320-2 (518), LSI MegaRAID SCSI 320-2E,
+LSI MegaRAID SCSI 320-2X (532), as well as rebranded copies of these
+controllers from Dell, HP and Intel, as well as all on-board or
+daughterboard products based on LSI MegaRAID 160/320 or 150/300 chipset.
+* *lsi_mpt* -- Fusion/MPT, now branded as LSI MPT design of HBAs,
+available in such adapters as LSI20160, LSIU320, LSI20320-R, LSI20320IE,
+LSI21320-R, LSI22320-R, LSI22320SE.
+* *software* -- Linux software RAID device (md), for a sake of
+completeness.
+
+This is not a complete list. To check if your adapter is supported, just
+run `./configure` or `einarc-install` without options to select all
+available modules. There's a good chance that your adapter would be
+supported too.
+
+== Installation
+
+Currently, Einarc is a sub-project of
+http://www.inquisitor.ru/[Inquisitor hardware testing framework] and can
+be downloaded either bundled with Inquisitor itself or
+http://www.inquisitor.ru/doc/einarc/[from its own mini-homepage].
+Alternatively, your favourite distributed may provide you with pre-built
+package.
+
+=== Manual installation
+
+After downloading, extract the contents of tarball (this would yield a
+directory with sources), then run `./configure`. You can use the
+following options:
+
+`\--target=TARGET`::
+  target to build for; default is selected by looking up architecture of current host
+`\--bindir=DIR`::
+  where to place user executables
+`\--rubysharedir=DIR`::
+  ruby share directory
+`\--rubylibdir=DIR`::
+  ruby binary extensions directory
+`\--einarclibdir=DIR`::
+  proprietary extensions directory
+include::inc/modules-options.txt[]
+`-h`, `\--help`::
+  show help
+
+After running `./configure` with options, file `Makefile.config` would
+be created. You can check it out and edit by hand if necessary. Then run
+`make` to start a build process. In fact, Einarc is written in a script
+language and does not need build, but we use the build stage to download
+all the proprietary CLIs that would be required to support requested
+controllers.
+
+After downloading, unpacking and preparing all required tools, you can
+run `make install` (usually requires root privileges) to install Einarc
+in your system.
+
+=== Package installation
+
+Since version 1.4, it's possible to package and install Einarc as
+pre-built binary package (rpm, deb) from major distribution
+repositories. Recommended name for a package is `einarc`.
+
+After installation of package, all Einarc modules that don't require
+proprietary CLIs are available (so far it's only `software` module to
+control Linux software RAIDs), so in most case you'll still have to
+download necessary proprietary CLIs to make Einarc useful. It can be
+done automatically on target machine by running `einarc-install`. It can
+be called with the same `--modules` option as in `./configure`:
+
+include::inc/modules-options.txt[]
+
+== Command-line interface (CLI)
+
+Simplest way to use Einarc is to use command-line interface. Einarc
+can be invoked using:
+
+`einarc [options] <object> <method> <parameters>`
+
+Options:
+
+include::inc/options.txt[]
+
+Refer to <<object_interface,object interface description>> for particular objects.
+
+include::inc/cli-examples.txt[]
+
+== Application programming interface (API)
+
+Einarc's libraries can be called directly with almost the same object
+terms as from the command-line interface.
+
+Einarc is written in Ruby and thus can be used easily from this script
+language. Using Einarc API in your program takes a few simple steps:
+
+=== Add libraries
+
+Einarc modules should be loaded before use. Adding the following require
+statement would automatically load all available RAID support modules:
+
+ require 'raid/baseraid'
+
+=== Listing available adapters
+
+To find out which adapters are available, use:
+
+ RAID::BaseRaid.query_adapters
+
+This would return you an array of hashes, one element of array for each
+adapter found, for example:
+
+ [{:driver=>"areca", :version=>"PCI", :num=>1, :model=>"ARC-1160"}]
+
+=== Create adapter objects
+
+Instantiate a particular adapter object, for example:
+
+ a = RAID::Areca.new
+
+=== Use adapter object methods
+
+After adapter object *a* is created, one can use all the methods described
+in object interface using a simple convention.
+
+* If method *does not return* anything, it's just
+
+ a.object_method(all, other, arguments, ...)
++
+for example:
+
+ a.logical_clear
+
+* If method should *return its data as Ruby objects* (a hash, an array, an
+array of hashes, etc), then it should be called as
+
+ a._object_method(all, other, arguments, ...)
++
+Note the beginning underscore. An example:
+
+ a._adapter_info
+ => {"PCI product ID"=>"1160", "System Memory"=>"256MB/333MHz",
+     "Current IP Address"=>"192.168.0.1", "Controller Name"=>"ARC-1160",
+     "BOOT ROM Version"=>"V1.39 2006-1-4  ", "CPU DCache Size"=>"32KB",
+     "Main Processor"=>"500MHz", "Firmware version"=>"V1.39 2006-2-9  ",
+     "PCI vendor ID"=>"17d3", "CPU ICache Size"=>"32KB",
+     "Serial number"=>"XXXXXXXXXXXXXXXX"}
+
+* If method should *print whatever strings Einarc CLI displays*, it
+should be called as:
+
+ a.object_method(all, other, arguments, ...)
++
+For example:
+
+ a.adapter_info
+ PCI product ID          1160
+ System Memory           56MB/333MHz
+ Current IP Address      192.168.10.111
+ ...
+
+=== Error handling
+
+All RAID-related activities raise an exception of class `RAID::Error` on
+error.
+
+[[object_interface]]
+== Object interface
+
+Einarc exposes a relatively simple and straight-forward object model for
+an end-user.
+
+.Einarc objects
+image::images/einarc-objects.png[Einarc objects]
+
+Every computer (host) may have one or more adapters (object `adapter`).
+Adapters provide RAID services as logical discs (object `logical`) that
+are usually seen in OS as individual devnodes. Logical discs may include
+one or more physical discs (object `physical`). Physical discs are
+usually hidden from the OS and are accessible only through proprietary
+CLI. Adapters also may keep some history of what events happened in the
+past and what objects were involved (object `log`). Finally, adapters
+being little computers with their own operating system and multi-tasking
+may perform separate background tasks, such as building/rebuilding or
+checking of the array (object `task`).
+
+Each of these objects have a couple of methods described below. Some of
+these objects have named properties that can be read using `get` and
+written using `set`. Some of the properties are read-only (only `get`
+would work), some are write-only (only `set` would work).
+
+=== query (special)
+
+A special function that lists available adapters of current
+model. This function is not called directly through object model, but
+called indirectly, iterating over all support drivers when performing
+an `-l` (`--list`) command line command to list all available and
+supported adapters.
+
+Output is tab-separated strings in format:
+
+[grid="all"]
+'----------.----------.--------------------.-------------------------------
+Driver      Adapter ID Adapter model        Adapter serial number / version
+---------------------------------------------------------------------------
+lsi_megarc  00         MegaRAID SCSI 320-1  40LD/8SPAN
+areca       01         ARC-1120             PCI
+---------------------------------------------------------------------------
+
+include::inc/object-interface-generic.txt[]
+
+== History of releases
+
+include::NEWS[]
+
+== Planned features
+
+=== More devices
+
+It's possible to implement support for the following storage devices in
+Einarc:
+
+* FreeBSD's GEOM software RAID
+* Adaptec raidutils
+* Chelsio TOE
+* Emulex dfc / lputil
+* ICP Vortex RAID Storage Console -- icpcon
+* HighPoint RocketRAID hptraidconf
+* Some HP rebranded controllers using HP Array Configuration Utility CLI
+* LSI (former IBM, former Mylex) DAC960/DAC1100
+* Promise CLI
+* QLogic SANsurferCLI / qlremote
+
+=== General features
+
+Moreover, Einarc would be nice with:
+
+* Graphical UI
+* Web-based remote-accessible UI
+* Monitoring subsystem or plugin for Nagios

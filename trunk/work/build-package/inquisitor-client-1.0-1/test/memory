@@ -1,0 +1,64 @@
+#!/bin/sh -ef
+# NAME=Memory test: Memtester
+# DESCRIPTION=This memory test is performed without reboot, under control of live full-featured OS, using user-space memtester program. Test takes special precautions and tries to lock maximum possible amount of memory for memtester. memtester tests memory using standard read-write-check method using 16 patterns.
+# DESTROYS_HDD=false
+# IS_INTERACTIVE=false
+# POWEROFF_DURING_TEST=false
+# VERSION=0.1
+# TAGS=ram,memory
+# DEPENDS=Memory
+# VAR=TEST_LOOPS:int:1:Number of testing loops
+# VAR=LOGTIME:int:120:Time between progress updates, sec
+
+. _inq-config-global; . $SHARE_DIR/functions-test
+
+FREE_MEMORY=$(( `grep "^MemFree:" /proc/meminfo | awk '{print $2}'` - 65536 ))
+TOTAL_SUBSTAGES=$(( 16 * $TEST_LOOPS ))
+COMPLETED_SUBSTAGES=0
+
+# Currently we are not talking with OOM killer at all
+
+exit_handler()
+{
+	[ -d "/proc/$MEMTEST_PID" ] && kill $MEMTEST_PID
+	[ -f "$MEMORY_LOG" ] && rm $MEMORY_LOG
+
+	# Turn OOM killer on
+	#sysctl vm.overcommit_memory=0
+	#sysctl vm.overcommit_ratio=50
+}
+
+MEMORY_LOG=`mktemp`
+
+# Turn OOM killer off
+total_memory=`grep "^MemTotal:" /proc/meminfo | awk '{print $2}'`
+#sysctl vm.overcommit_memory=2
+ratio=$(( $FREE_MEMORY * 100 / $total_memory ))
+echo "Ratio: $ratio"
+#sysctl vm.overcommit_ratio=$ratio
+
+memtester -q $(( $total_memory * $ratio / 102400 )) $TEST_LOOPS 2>&1 | tee $MEMORY_LOG >$DEBUG_TTY &
+MEMTEST_PID=$!
+
+while true ; do
+	sleep $LOGTIME
+	COMPLETED_SUBSTAGES=`grep "ok$" $MEMORY_LOG | wc -l`
+	if [ -d /proc/$MEMTEST_PID ] ; then
+		test_progress $COMPLETED_SUBSTAGES $TOTAL_SUBSTAGES
+	else
+		if [ "$COMPLETED_SUBSTAGES" -eq "$TOTAL_SUBSTAGES" ] ; then
+			test_succeeded
+			break
+		else
+			if grep -q "^FAILURE:" $MEMORY_LOG; then
+				failure_message=`sed -n '/^FAILURE:/ s/FAILURE: //p' < $MEMORY_LOG`
+				print_red_message "FAILURE: $failure_message"
+				test_failed "$failure_message"
+			else
+				test_failed
+			fi
+
+			break
+		fi
+	fi
+done

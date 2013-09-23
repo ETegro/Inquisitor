@@ -1,0 +1,75 @@
+#!/bin/sh
+# NAME=HDD detect
+# DESCRIPTION=Detect hard drives using Einarc
+# DEPENDS=HDD
+
+model_vendor_pairs()
+{
+	# Here goes small tab-separated kind of database
+	# First column is used to find corresponding to specific model
+	# record.
+	# Second column is a vendor to set up.
+	# Third column is not necessary. If it is specified, then it
+	# will strip it's value from model.
+	cat <<__EOF__
+^ST.*	Seagate
+^D...-.*	IBM
+^IBM.*	IBM	IBM
+HITACHI.*	Hitachi	Hitachi
+^IC.*	Hitachi	Hitachi
+^HTS.*	Hitachi	Hitachi
+^HDS.*	Hitachi	Hitachi
+^FUJITSU.*	Fujitsu	Fujitsu
+^MP.*	Fujitsu
+^TOSHIBA.*	Toshiba	Toshiba
+^MK.*	Toshiba
+^MAXTOR.*	Maxtor	Maxtor
+^Pioneer.*	Pioneer	Pioneer
+^PHILIPS.*	Philips	Philips
+^QUANTUM.*	Quantum	Quantum
+FIREBALL.*	Quantum
+^WDC.*	Western Digital	WDC
+WD.*	Western Digital
+__EOF__
+}
+
+detect_vendor_by_model_itself()
+{
+	local model="$1"
+	local vendor=""
+	model_vendor_pairs | while read pair; do
+		regexp=`echo "$pair" | cut -f1`
+		pair_vendor=`echo "$pair" | cut -f2`
+		possible_strip=`echo "$pair" | cut -f3`
+		if echo "$model" | grep -qi "$regexp"; then
+			vendor="$pair_vendor"
+			model=`echo "$model" | sed "s/^${possible_strip} \?//i"`
+			echo "${model}	${vendor}"
+			break
+		fi
+	done
+	echo "${model}	${vendor}"
+}
+
+detect_vendor_by_model()
+{
+	# We have to use such a dirty hack, because of unability to
+	# export variable from while-statement. We can simply ignore
+	# second echo and live without temporary files for example.
+	detect_vendor_by_model_itself "$1" | sed -n '1p'
+}
+
+einarc -l | while read adapter_entity; do
+	adapter_type=`echo "$adapter_entity" | cut -f1`
+	adapter_num=`echo "$adapter_entity" | cut -f2`
+
+	einarc -a "$adapter_num" -t "$adapter_type" physical list | while read physical_entity; do
+		serial=`echo "$physical_entity" | cut -f4`
+		version=`echo "$physical_entity" | cut -f3`
+		vendor=`detect_vendor_by_model "$( echo "$physical_entity" | cut -f2 )" | cut -f2`
+		model=`detect_vendor_by_model "$( echo "$physical_entity" | cut -f2 )" | cut -f1`
+		[ -n "$vendor" ] || vendor=`echo "$physical_entity" | cut -f2 | cut -f1 -d" "`
+
+		add_component HDD "$vendor" "$model" "$serial" "$version"
+	done
+done

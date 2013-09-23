@@ -1,0 +1,83 @@
+#!/usr/bin/env ruby
+
+$LOAD_PATH.unshift('.')
+
+require 'getoptlong'
+require 'raid/baseraid'
+
+opts = GetoptLong.new(
+	[ '--help', GetoptLong::NO_ARGUMENT ],
+	[ '--version', '-V', GetoptLong::NO_ARGUMENT ],
+	[ '--human', '-h', GetoptLong::NO_ARGUMENT ],
+	[ '--list', '-l', GetoptLong::NO_ARGUMENT ],
+	[ '--type', '-t', GetoptLong::REQUIRED_ARGUMENT ],
+	[ '--adapter', '-a', GetoptLong::REQUIRED_ARGUMENT ]
+)
+
+adapter_type = adapter_num = nil
+$humanize = $stdout.isatty
+need_list = false
+
+opts.each { |opt, arg|
+	case opt
+	when '--help'
+		print <<EOF;
+Usage: einarc [options] <object> <command> [<operands>]
+
+Options:
+  -l, --list               list all adapters found in system and exit
+  -V, --version            print program version and exit
+      --help               show this text and exit
+  -h, --human              output human-readable information
+  -t, --type=TYPE          type (manufacturer) of RAID adapter
+  -a, --adapter=NUM        select the adapter if multiple adapters are present
+EOF
+		exit
+	when '--list'
+		need_list = true
+	when '--version'
+		print <<EOF;
+Einarc v#{RAID::VERSION}: unified storage/RAID controller command line interface
+
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+
+Installed modules
+-----------------
+EOF
+		RAID::RAIDS.each_key { |k| puts k }
+		exit
+	when '--adapter'
+		adapter_num = arg.to_i
+	when '--type'
+		adapter_type = arg
+	when '--human'
+		$humanize = true
+	end
+}
+
+begin
+	if need_list
+		RAID::BaseRaid.list_adapters
+		exit
+	end
+	if adapter_type
+		raise RAID::Error.new("Unknown adapter type specified: \"#{adapter_type}\"") unless RAID::RAIDS[adapter_type]
+		a = RAID::RAIDS[adapter_type].new(adapter_num)
+	else
+		# No adapter specified, try to guess one if it's obvious
+		ads = RAID::BaseRaid.query_adapters
+		if ads.length == 0
+			raise RAID::Error.new('No supported adapters found')
+		elsif ads.length == 1
+			a = RAID::RAIDS[ads[0][:driver]].new(ads[0][:num])
+		else
+			raise RAID::Error.new('Multiple adapters exist: use --list to list all adapters, choose one and specify it with --type and --adapter')
+		end
+	end
+	a.handle_method(ARGV)
+rescue RAID::Error => e
+	puts e.to_s
+	exit 1
+end

@@ -1,0 +1,572 @@
+#!/bin/sh
+# Common functions for most Inquisitor shell script needs.
+#
+# This file includes all functions that are generic and can be called
+# from multiple different modules. For functions specific to one
+# particular kind of a *module* (for example, for "test" modules),
+# see "functions-*module*" file, i.e. "functions-test".
+
+ALERT_ATTENTION='65535 65535 0'
+ALERT_FAILURE='65535 0 0'
+ALERT_PASSED='0 65535 0'
+
+. $SHARE_DIR/outformat
+
+# Prints success marker @[ DONE ]@ in success color to stdout.
+echo_success()
+{
+	MOVE_TO_COL
+	echo -n '[ '
+	SETCOLOR_SUCCESS
+	echo -n 'DONE'
+	SETCOLOR_NORMAL
+	echo ' ]'
+}
+
+# Prints failure marker @[FAILED]@ in failure color to stdout.
+echo_failure()
+{
+	MOVE_TO_COL
+	echo -n '['
+	SETCOLOR_FAILURE
+	echo -n 'FAILED'
+	SETCOLOR_NORMAL
+	echo ']'
+}
+
+# Prints skipped marker @[ SKIP ]@ in warning color to stdout.
+echo_skipped()
+{
+	MOVE_TO_COL
+	echo -n '['
+	SETCOLOR_WARNING
+	echo -n ' SKIP '
+	SETCOLOR_NORMAL
+	echo ']'
+}
+
+# Prints passed marker @[PASSED]@ in warning color to stdout.
+echo_passed()
+{
+	MOVE_TO_COL
+	echo -n '['
+	SETCOLOR_WARNING
+	echo -n 'PASSED'
+	SETCOLOR_NORMAL
+	echo ']'
+}
+
+# Prints running test marker @[CALLED]@ in warning color to stdout.
+echo_running()
+{
+	MOVE_TO_COL
+	echo -n '['
+	SETCOLOR_WARNING
+	echo -n 'CALLED'
+	SETCOLOR_NORMAL
+	echo ']'
+}
+
+fatal_failure()
+{
+	echo -n $1
+	echo_failure
+	exit 1
+}
+
+test_progress()
+{
+	COMPLETE=$1
+	TOTAL=$2
+
+	echo -en "\r"
+	echo -n "Test $TEST_NAME "
+
+	echo -en $COMPLETE/$TOTAL"\t"
+
+	#Show percents
+	if [ "$TOTAL" -gt 40 ] ; then
+		echo -n "("$(( 100 * $COMPLETE / $TOTAL ))%")"
+	else
+		echo -n "["
+		for i in `seq 1 $COMPLETE` ; do echo -n "#" ; done
+		for i in `seq $(($COMPLETE + 1)) $TOTAL` ; do echo -n "." ; done
+		echo -n "]"
+	fi
+
+	test_stage_progress $COMPLETE $TOTAL
+}
+
+# Issues a managed test run; should be called by a scheduler.
+#
+# Input:
+# $1 - script in test directory to run
+# TEST_NAME - unique identifier of test stage in testing (for database)
+# + variables to pass to the test
+run_test()
+{
+	TEST_TYPE=$1
+
+	# Get test's version
+	TEST_VERSION=`sed -n 's/^# VERSION=\(.*\)$/\1/p' < $SHARE_DIR/test/$1`
+
+	# Mark test as started
+	echo -n "Test $TEST_NAME"
+	echo_running
+	# Can this test hangup machine
+	if [ `sed -n 's/^# POWEROFF_DURING_TEST=\(.*\)$/\1/p' < $SHARE_DIR/test/$1` = "false" ]; then
+		event="start"
+	else
+		event="mayhang"
+	fi
+	test_stage_advance "$TEST_NAME" "$TEST_TYPE" "$TEST_VERSION" $event
+
+	MSG_DIR=`mktemp -d`
+	# Run test, collect status + comment + posttest commands
+	export PLANNER=1
+	(if "$SHARE_DIR/test/$1" 4>$MSG_DIR/comment 5>$MSG_DIR/execute_after_test.sh 2>&1; then
+		echo -n "Test $TEST_NAME"
+		echo_success
+		test_stage_advance "$TEST_NAME" "$TEST_TYPE" "$TEST_VERSION" finish "`cat $MSG_DIR/comment`"
+		echo -n "Executing posttest commands..."
+		/bin/sh $MSG_DIR/execute_after_test.sh
+		echo_success
+	else
+		touch ${MSG_DIR}/exit_fail
+		echo -n "Test $TEST_NAME"
+		echo_failure
+		test_stage_advance "$TEST_NAME" "$TEST_TYPE" "$TEST_VERSION" fail "`cat $MSG_DIR/comment`"
+		echo
+		echo "Fatal failure: testing stopped"
+		echo "Reason: `cat $MSG_DIR/comment`"
+	fi) | tee /dev/inqlog
+	[ -f ${MSG_DIR}/exit_fail ] && return 1 || return 0
+}
+
+# Starts a monitoring in background. Makes sure that running monitoring
+# is unique.
+#
+# Input:
+# $1 - name of monitoring script
+monitoring_start()
+{
+	monitoring_stop $1
+	pushdq $SHARE_DIR/monitoring
+	./$1 &
+	echo $! >$HOME/monitoring_$1.pid
+	popdq
+}
+
+# Stops a monitoring, running in background.
+#
+# Input:
+# $1 - name of monitoring script
+monitoring_stop()
+{
+	if [ -r "$HOME/monitoring_$1.pid" ]; then
+		kill `cat $HOME/monitoring_$1.pid` 2>$DEBUG_TTY || :
+		rm -f $HOME/monitoring_$1.pid
+	fi
+}
+
+refresh_console()
+{
+	chvt 4
+	sleep 1
+	chvt 1
+	test_set_status	
+}
+
+watchdog_start()
+{
+	echo -n 'Starting watchdog'
+	watchdog &
+	echo $! >$HOME/watchdog.pid
+	echo_success
+}
+
+watchdog_stop()
+{
+	echo -n 'Stopping watchdog'
+	if [ -r $HOME/watchdog.pid ]; then
+		kill `cat $HOME/watchdog.pid` ||
+		rm -f $HOME/watchdog.pid
+		echo_success
+	else
+		echo_skipped
+	fi
+}
+
+# start_background(PIDFILE, CPULIST, CMDLINE)
+# Starts a process CMDLINE in background, setting CPU affinity to
+# CPU_LIST (if not empty). Saves PID of the program in PIDFILE.
+start_background()
+{
+	local PIDFILE=$1
+	shift
+	local CPULIST=$1
+	shift
+	if [ -n "$CPULIST" ]; then
+		taskset	-c "$CPULIST" $@ &
+		echo $! >$PIDFILE
+	else
+		$@ &
+		echo $! >$PIDFILE
+	fi
+}
+
+stop_background()
+{
+	kill `cat "$1"`
+	rm -f "$1"
+}
+
+# Helper function for timed_run()
+timed_run_success()
+{
+	# Print out real, user and sys times
+	awk '{print $NF}' < $time_output
+	rm -f "$time_output"
+}
+
+# Helper function for timed_run()
+timed_run_failure()
+{
+	rm -f "$time_output"
+	false
+}
+
+timed_run()
+{
+	# We do not need to use built-in "time" command, as it may
+	# have very different options and output format
+	time_output=`mktemp`
+	time_cmd="`which time` -p -o $time_output"
+
+	# We can specify "to_dev_null" to redirect stdout to /dev/null
+	if echo "$@" | grep -q "to_dev_null"; then
+		shift
+		$time_cmd $@ >/dev/null 2>$DEBUG_TTY && timed_run_success || timed_run_failure
+	else
+		$time_cmd $@ >$DEBUG_TTY 2>&1 && timed_run_success || timed_run_failure
+	fi
+}
+
+timed_run_real()
+{
+	# Show only real time instead of real, user and sys
+	timed_run $@ | sed -n '1p'
+}
+
+print_green_message()
+{
+	echo ""
+	SETCOLOR_SUCCESS
+	echo "$1"
+	SETCOLOR_NORMAL
+	echo ""
+}
+
+print_red_message()
+{
+	echo ""
+	SETCOLOR_FAILURE
+	echo "$1"
+	SETCOLOR_NORMAL
+	echo ""
+}
+
+IP_SUITE='/sbin/ip'
+
+dev_for_route_to_server()
+{
+	dev=`$IP_SUITE -o -4 route get $SERVER | grep -o 'dev [^ ]*'`
+	echo ${dev#'dev '}
+}
+
+subnet_for_dev()
+{
+	local dev=$1
+	local ip=
+	local mask=
+	local addr='\([0-9]\+\)'
+	addr=$addr'\.'$addr'\.'$addr'\.'$addr
+	local pattern='ip=$(( ((\1 << 24) | (\2 << 16) | (\3 << 8) | (\4)) \& (((1 << (32 - \5)) - 1) ^ 0xffffffff) ));'
+	pattern=$pattern'mask=\5;'
+	pattern='s/^.*inet '$addr'\/\([0-9]\+\).*$/'$pattern'/'
+	eval `$IP_SUITE -o -4 address show $dev | sed "$pattern" `
+	echo "$(( ip >> 24 )).$(( (ip >> 16) & 255 )).$(( (ip >> 8) & 255 )).$(( ip & 255 ))/$mask"
+}
+
+get_hdd_info()
+{
+	udi=`hal-find-by-property --key block.device --string "$1"`
+	echo "Device $1:"
+	echo "       Product: `hal-get-property --udi $udi --key info.product`"
+	echo "       Serial: `hal-get-property --udi $udi --key storage.serial`"
+}
+
+get_nic_mac()
+{
+	udi=`hal-find-by-property --key net.interface --string "$1"`
+	echo "`hal-get-property --udi $udi --key net.address`"
+}
+
+get_hdds_list()
+{
+	einarc -l | while read adapter_entity; do
+		adapter_type=`echo "$adapter_entity" | cut -f1`
+		adapter_num=`echo "$adapter_entity" | cut -f2`
+		einarc -a "$adapter_num" -t "$adapter_type" logical list | cut -f5
+	done
+}
+
+get_odds_list()
+{
+	for UDI in `hal-find-by-capability --capability storage.cdrom`; do
+		hal-device "$UDI" |
+		sed -n "/info.product/s/^.* = '\(.*\)' .*$/\1/gp" |
+		egrep -q "(RMM2 VDrive|Virtual)" ||
+		hal-get-property --udi "$UDI" --key block.device
+	done
+}
+
+get_fdds_list()
+{
+	for UDI in `hal-find-by-property --key=storage.drive_type --string floppy`; do
+		hal-get-property --udi "$UDI" --key block.device
+	done
+}
+
+get_nics_list()
+{
+	cat /proc/net/dev | awk -F: '{print $1}' | sed -n 's/ //g; /eth/p'
+}
+
+get_cpus_list()
+{
+	cat /proc/cpuinfo | grep "^processor" | awk '{print $NF}'
+}
+
+get_interface_ipaddr()
+{
+	/sbin/ifconfig eth$1 | grep 'inet addr:' | sed 's/^.*:\(.*\)  Bcast.*$/\1/;'
+}
+
+check_writeable_odd()
+{
+	if cdrecord dev=$1 -atip | grep -q 'ATIP info from disk' >$DEBUG_TTY 2>&1; then
+		echo "true"
+	else
+		echo "false"
+	fi
+}
+
+check_readable_odd()
+{
+	if readcd dev=$1 f=/dev/null -fulltoc | grep -q 'TOC len' >$DEBUG_TTY 2>&1; then
+		echo "true"
+	else
+		echo "false"
+	fi
+}
+
+# Syncing with clearing all buffers and caches
+sync_full()
+{
+	sync;sync;sync
+	echo 3 > /proc/sys/vm/drop_caches
+}
+
+# Waits for 10 seconds and forces hard reboot sequence using procfs
+# system request.
+hard_reboot()
+{
+	print_red_message "Forcing hard reboot now!"
+	sleep 10
+	inq-reboot
+}
+
+# Waits for 10 seconds and forces hard shutdown (usually a poweroff)
+# sequence using procfs system request.
+hard_shutdown()
+{
+	print_red_message "Forcing hard shutdown now!"
+	sleep 10
+	inq-shutdown
+}
+
+test_succeed_if_no()
+{
+	local quantity=`get_$1_list | wc -l`
+	if [ "$quantity" -eq 0 ]; then
+		test_succeeded "No `echo $1 | sed -n 's/^\(.*\)s$/\1/pg' | tr a-z A-Z`s found"
+		exit 0
+	fi
+}
+
+need_kernel_module()
+{
+	if ! lsmod | grep -q "^$1"; then
+		echo -n "Loading $1 kernel module..."
+		if modprobe $1; then
+			sleep 30
+			echo_success
+		else
+			echo_failure
+		fi
+	fi 2>$DEBUG_TTY
+}
+
+assure_network_stack_exists()
+{
+	ifconfig lo up
+}
+
+component_version()
+{
+	COMPONENT_GROUP=$1
+	xsltproc --stringparam group "$COMPONENT_GROUP" $SHARE_DIR/get_component_version.xslt $HOME/components.xml | sed 's/[[:cntrl:]]//g'
+}
+
+cpu_quantity()
+{
+	get_cpus_list | wc -l
+}
+
+memory_amount()
+{
+	echo $(( `grep MemTotal /proc/meminfo | awk '{print $2}'` / 1024 ))
+}
+
+executable_arch()
+{
+	exe_path=`which $1`
+
+	# Check if it is symbilic link
+	if file $exe_path 2>&1 | grep -q "symbolic link"; then
+		linked_to=`readlink $exe_path`
+                exe_path=`which $linked_to 2>&1`
+	else
+		true
+	fi
+	
+	case `file $exe_path 2>&1 | awk -F, '{print $2}' | sed 's/ //g'` in
+	"Intel80386")
+		echo "i386"
+		;;
+	"x86-64")
+		echo "amd64"
+		;;
+	esac
+}
+
+pushdq()
+{
+	# It is "quiet" pushd
+	pushd $@ 2>&1 >$DEBUG_TTY
+}
+
+popdq()
+{
+	# It is "quiet" popd
+	popd 2>&1 >$DEBUG_TTY
+}
+
+service_start()
+{
+	service=$1
+
+	if [ -x /sbin/service ]; then
+		/sbin/service $1 start
+	else
+		/etc/init.d/$1 start
+	fi
+}
+
+strip_surrounding_spaces()
+{
+	sed 's/^\s*//g; s/\s*$//g'
+}
+
+strip_amp_symbols()
+{
+	sed 's/&[^;]*;//g'
+}
+
+strip_empty_xmlns()
+{
+	sed 's/ xmlns=""//g'
+}
+
+strip_non_printable()
+{
+	sed 's/[^[:print:]]//g'
+}
+
+strip_tag_symbols()
+{
+	sed 's/[<>]//g'
+}
+
+sanitize_string()
+{
+	echo "$1" | strip_surrounding_spaces | strip_non_printable | strip_tag_symbols
+}
+
+add_component()
+{
+	type=$1
+	vendor=`sanitize_string "$2"`
+	model=`sanitize_string "$3"`
+	serial=`sanitize_string "$4"`
+	version=`sanitize_string "$5"`
+
+	if [ -s "$HOME/components.xml" ]; then
+		new_components=`mktemp`
+
+		xsltproc --stringparam type "$type" \
+			 --stringparam vendor "$vendor" \
+			 --stringparam model "$model" \
+			 --stringparam serial "$serial" \
+			 --stringparam version "$version" \
+			 $SHARE_DIR/add_component.xslt $HOME/components.xml |
+			 # Strings must not contatin "&.*;"-like symbols as it
+			 # can break detects. Currently we do not do it in
+			 # XSLT itself, because it is not quite simple. Also
+			 # we are removing empty namespace declarations there.
+			 strip_amp_symbols | strip_empty_xmlns > $new_components
+
+		mv $new_components $HOME/components.xml
+	else
+		cat >$HOME/components.xml <<__EOF__
+<?xml version="1.0"?>
+<list>
+  <component>
+    <type>$type</type>
+    <vendor>$vendor</vendor>
+    <model>$model</model>
+    <serial>$serial</serial>
+    <version>$version</version>
+  </component>
+</list>
+__EOF__
+	fi
+}
+
+# Returns "true" (zero exit status) if IPMI is available, or "false"
+# (non-zero exit status) if it's not. Meant to be used in various detects
+# and monitorings that use IPMI to bail out early.
+has_ipmi()
+{
+	if [ -c /dev/ipmi0 -o -c /dev/ipmi/0 -o -c /dev/ipmidev/0 ]; then
+		if [ -r /dev/ipmi0 -o -r /dev/ipmi/0 -o -r /dev/ipmidev/0 ]; then
+			true
+		else
+			echo 'IPMI found, but no permissions to read it. You should run this as root.' >$DEBUG_TTY
+			false
+		fi
+	else
+		false
+	fi
+}

@@ -1,0 +1,271 @@
+#!/bin/sh
+
+. _inq-config-global
+
+export TERM=screen
+DIALOG=dialog
+PROFILE_PATH=$SHARE_DIR/profile/live
+
+clear_screen()
+{
+	reset -Q
+}
+
+test_descriptions()
+{
+	find $SHARE_DIR/test -maxdepth 1 -type f | while read L; do
+		if grep -q '^# NAME=' "$L"; then
+			echo "'`basename "$L"`'"
+			sed -ne '/^# NAME=/ { s/^# NAME=\(.*\)$/"\1"/; p }' <"$L"
+		fi
+	done
+}
+
+menu_items()
+{
+	# Dialog specific options
+	cat <<__EOF__
+--item-help
+--nocancel
+--backtitle
+"Inquisitor Live"
+--title
+"Choose an action"
+--menu
+"" 16 72 10
+__EOF__
+
+	# Profiles itself
+	for profile in `get_profiles`; do
+		xsltproc $SHARE_DIR/profile2menu_item.xslt "$profile"
+	done
+
+	# Some special predefined items
+	cat <<__EOF__
+"Infinite loop"
+"Turn on infinite testing looping"
+"Choosing this and running testings above you will not return here anymore"
+"Profiles directory"
+"Change directory with profiles path"
+""
+Single
+"Run a single test"
+"Choose and run a single test with fine-tuning of all parameters"
+Detects
+"Detects only"
+""
+View
+"View test results"
+""
+Save
+"Save test results"
+"Save test results to external storage media (USB flash, etc)"
+About
+"About Inquisitor"
+""
+Reboot
+"Quit and reboot"
+""
+Shutdown
+"Shutdown computer"
+""
+__EOF__
+
+}
+
+get_profiles()
+{
+	[ -n "$PROFILE_PATH" ] || return
+	for profile in `find $PROFILE_PATH -maxdepth 1 -name '*.xml'`; do
+		if xsltproc $SHARE_DIR/profile2test_script.xslt "$profile" >$DEBUG_TTY 2>&1; then
+			echo "$profile"
+		else
+			true
+		fi
+	done
+}
+
+create_test_script()
+{
+	local profile_filename=$1
+
+	xsltproc $SHARE_DIR/profile2test_script.xslt "$profile_filename" > $HOME/test_script
+}
+
+run_inquisitor()
+{
+	if [ $infinite_loop = "off" ]; then
+		inquisitor
+	else
+		while true; do inquisitor; done
+	fi
+}
+
+result_list()
+{
+	find $HOME -maxdepth 1 -type f -and ! -name '*.pid' -printf "\"%f\" 'File'\n"
+}
+
+desc=`test_descriptions`
+infinite_loop="off"
+items=`mktemp`
+
+while true; do
+	exec 3>&1
+	menu_items > $items
+	value=`$DIALOG --file $items 2>&1 1>&3`
+
+	retval=$?
+	exec 3>&-
+	clear_screen
+
+	case $retval in
+	0)
+		;;
+	1)
+		exit 0
+		;;
+	255)
+		if test -n "$value" ; then
+			echo "$value"
+		else
+			continue # ESC pressed
+		fi
+		;;
+	esac
+
+	case "$value" in
+	# Here are special predefined items
+	"Infinite loop")
+		if [ $infinite_loop = "off" ]; then
+			infinite_loop="on"
+		else
+			infinite_loop="off"
+		fi
+			
+		$DIALOG --backtitle 'Inquisitor Live: Infinite loop' \
+			--title 'Infinite loop switch' \
+			--msgbox "Infinite loop switch turned $infinite_loop" 5 40
+		continue
+		;;
+	"Profiles directory")
+		exec 3>&1
+		RESULT=`$DIALOG --backtitle "Inquisitor Live: Profiles directory" \
+			--title "Path to directory..." \
+			--clear \
+			--inputbox "Directory containing profiles" 8 51 "$SHARE_DIR/profile/live" 2>&1 1>&3`
+		retval=$?
+		exec 3>&-
+		if [ "$retval" = 0 ]; then
+			PROFILE_PATH="$RESULT"
+			$DIALOG --backtitle 'Inquisitor Live: Additional profiles path' \
+				--title "Found profiles:" \
+				--msgbox "`get_profiles`" 15 72
+		else
+			continue
+		fi
+		;;
+	Single)
+		exec 3>&1
+		RESULT=`echo $desc | xargs $DIALOG --clear --backtitle 'Inquisitor Live: Run a single test' \
+			--title 'Choose a test' \
+			--menu '' 20 51 14 2>&1 1>&3`
+		retval=$?
+		exec 3>&-
+		if [ "$retval" = 0 ]; then
+			clear_screen
+			echo "Running test '$RESULT'"
+			$SHARE_DIR/test/$RESULT
+		else
+			continue
+		fi
+		;;
+	Detects)
+		inq-detect
+		;;
+	View)
+		exec 3>&1
+		RESULT=`echo $(result_list) | xargs $DIALOG --clear --backtitle 'Inquisitor Live: View test results' \
+			--title 'Choose a file' \
+			--menu '' 20 51 14 2>&1 1>&3`
+		retval=$?
+		exec 3>&-
+		if [ "$retval" = 0 ]; then
+			clear_screen
+			$DIALOG --clear --backtitle "Inquisitor Live: View test results: $RESULT" --textbox "$HOME/$RESULT" 0 0
+			continue
+		else
+			continue
+		fi
+		;;
+	Save)
+		exec 3>&1
+		RESULT=`$DIALOG --backtitle 'Inquisitor Live: Save test results' \
+			--title 'Save file as...' \
+			--clear \
+			--inputbox 'Save test results tarball (.tar.gz) as:' 8 51 '/media/disk/results.tar.gz' 2>&1 1>&3`
+		retval=$?
+		exec 3>&-
+		if [ "$retval" = 0 ]; then
+			clear_screen
+			echo 'Saving test results...'
+			find $HOME -maxdepth 1 -type f -and ! -name '*.pid' | xargs tar -cvzf "$RESULT"
+			echo 'Saving complete'
+		else
+			continue
+		fi
+		;;
+	About)
+		$DIALOG --backtitle 'Inquisitor Live: About' \
+			--title "Inquisitor Live v$INQ_VERSION" \
+			--msgbox "Copyright (C) 2004-2009 by Inquisitor team. \
+This program is free software: you can redistribute it and/or modify \
+it under the terms of the GNU General Public License as published by \
+the Free Software Foundation, either version 3 of the License, or \
+(at your option) any later version. \
+\
+This program is distributed in the hope that it will be useful, \
+but WITHOUT ANY WARRANTY; without even the implied warranty of \
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the \
+GNU General Public License for more details. \
+\
+You should have received a copy of the GNU General Public License \
+along with this program.  If not, see <http://www.gnu.org/licenses/>." 15 72
+		continue
+		;;
+	Reboot)
+		/sbin/reboot
+		;;
+	Shutdown)
+		/sbin/shutdown -h now
+		;;
+	# Otherwise start testing with necessary profile
+	*)
+		# Find corresponding profile XML
+		for profile in `get_profiles`; do
+			if grep -q "name=.$value" "$profile"; then
+				profile_filename="$profile"
+			fi
+		done
+
+		assurance=`xsltproc $SHARE_DIR/profile2assurance.xslt "$profile_filename"`
+		if [ -z "$assurance" ]; then
+			create_test_script "$profile_filename"
+			run_inquisitor
+		else
+			# User should be sure to continue testing
+			if $DIALOG --backtitle "Inquisitor Live: $value" --title 'WARNING!' --clear --yesno "$assurance" 8 60; then
+				clear_screen
+				create_test_script "$profile_filename"
+				run_inquisitor
+			else
+				continue
+			fi
+		fi
+		;;
+	esac
+
+	echo
+	echo 'Press ENTER to return to main menu'
+	read L
+done

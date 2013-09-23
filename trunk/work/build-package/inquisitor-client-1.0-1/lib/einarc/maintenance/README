@@ -1,0 +1,19 @@
+This directory contains tools required for development, maintenance and
+release management of Einarc. It's generally not interesting for regular
+users, so it should be excluded from distribution tarball.
+
+== Memo: how to make a release
+
+1. Pump version in:
+	VERSION
+	src/raid/baseraid.rb
+2. Document changes in NEWS
+3. Commit everything
+4. release-tarball
+5. Upload to SF
+6. Announce at:
+	inquisitor.ru
+	SourceForge.net (news submit)
+	freshmeat.net
+	linux.org.ru
+	opennet.ru

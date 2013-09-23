@@ -1,0 +1,64 @@
+#!/bin/sh -ef
+# NAME=USB GPRS modem
+# DESCRIPTION=This simple test can determine connected USB modem workability. It sets modem/port speed to 115200bps, checks for proper answer on AT-commands and retrieves it's IMEI number.
+# DESTROYS_HDD=false
+# IS_INTERACTIVE=false
+# POWEROFF_DURING_TEST=false
+# VERSION=0.1
+# TAGS=usb,gprs
+# DEPENDS=USB, GPRS Modem
+# VAR=DEV:string:/dev/ttyUSB0:Name of device to test
+# VAR=ANSWER_ATI:string:OK:String to get after ATI
+# VAR=CHAT_TIMEOUT:int:5:Timeout for waiting for answer
+
+. _inq-config-global; . $SHARE_DIR/functions-test
+
+exit_handler()
+{
+	[ -f "$TMP_DIR/imei" ] && rm -f $TMP_DIR/imei
+	[ -f "$TMP_DIR/ati" ] && rm -f $TMP_DIR/ati
+	[ -d "$TMP_DIR" ] && rmdir $TMP_DIR
+}
+
+TMP_DIR=`mktemp -d`
+
+# Try to set modem speed to 115200 (if it's at 9600). We'll fail if it's
+# already at 115200, so ignore it - we'll check for the final state at
+# next step.
+echo -n "Transition from 9600 to 115200..."
+stty 9600 -F $DEV
+chat -t $CHAT_TIMEOUT -Vs '' AT OK-AT-OK AT+IPR=115200 OK <$DEV >$DEV 2>/dev/null || {
+	echo -n "failed to set modem from 9600 to 115200 speed"
+	echo_failure
+}
+echo_success
+
+sleep 1
+echo -n "Check for proper answer from modem..."
+stty 115200 -F $DEV
+sleep 1
+chat -t $CHAT_TIMEOUT -Vs '' AT OK-AT-OK ATI $ANSWER_ATI \
+	<$DEV >$DEV \
+	2>$TMP_DIR/ati ||
+	test_failed 'Proper answer from modem'
+echo_success
+
+# Parse ATI's answer
+# Assume that it is two or three strings output with vendor, model and
+# some revision on them
+ati=`sed -n '/^ATI/,/^OK/p' < $TMP_DIR/ati | sed '/^OK/d;/^ATI$/d;/^$/d'`
+component_vendor=`echo "$ati" | sed -n '1p' | sed 's/[Mm]anufacturer:\s*//'`
+component_model=`echo "$ati" | sed -n '2p' | sed 's/[Mm]odel:\s*//'`
+component_version=`echo "$ati" | sed -n '3p' | sed 's/[Rr]evision:\s*//'`
+
+sleep 1
+echo -n "Getting IMEI... "
+chat -t $CHAT_TIMEOUT -Vs '' AT OK-AT-OK AT+GSN OK <$DEV >$DEV 2>$TMP_DIR/imei \
+	|| test_failed 'Getting IMEI'
+IMEI=`sed -ne '/^[0-9][0-9]*$/ p' <$TMP_DIR/imei`
+echo -n "$IMEI"
+echo_success
+
+add_component 'GPRS Modem' "$component_vendor" "$component_model" "$IMEI" "$component_version"
+
+test_succeeded

@@ -24,6 +24,9 @@ else
 ifeq ($(FLAVOUR), live)
 all: build-package data build-root build-boot build-live
 else
+ifeq ($(FLAVOUR), debian7)
+all: build-package build
+else
 ifeq ($(FLAVOUR), standalone)
 all: build-package
 else
@@ -35,6 +38,7 @@ all: build-package
 else
 all:
 	echo 'Edit Makefile.config to set up FLAVOUR to one of the valid values'
+endif
 endif
 endif
 endif

@@ -1,0 +1,19 @@
+#!/bin/sh -e
+# NAME=Reference-based detects comparison
+# DESCRIPTION=Compare detected hardware components with pre-generated reference YAML file. This file can be created with list_components method on server-side.
+# DESTROYS_HDD=false
+# IS_INTERACTIVE=false
+# POWEROFF_DURING_TEST=false
+# VERSION=0.1
+# DEPENDS=BMC,CPU,Chassis,Disk Controller,Floppy,HDD,Mainboard,Memory,NIC,OSD,Platform,USB,Video,ODD,GPRS Modem,USB Mass Storage
+# TAGS=
+# VAR=FILENAMES:string::Reference files
+# VAR=EXCLUDED_MODELS:string::Excluded component models from comparison
+
+. _inq-config-global; . $SHARE_DIR/functions-test
+
+if compare_fast "$FILENAMES" "$EXCLUDED_MODELS"; then
+	test_succeeded
+else
+	test_failed
+fi
