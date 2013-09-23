@@ -1,9 +1,9 @@
 #!/bin/bash -x
 
-. config
+. build/debian7/config
 
-mkdir -p $LIVEDIR
-cd $LIVEDIR
+#mkdir -p $LIVEDIR
+cd ${WORKDIR}/${LIVEDIR}
 lb config \
 	--bootstrap debootstrap \
 	--system live

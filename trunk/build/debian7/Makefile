@@ -79,15 +79,15 @@ build-live-configure:
 	sudo rm -rf $(WORKDIR)/$(LIVEDIR)
 	mkdir -p $(WORKDIR)/$(LIVEDIR)
 	# Run LiveCD LiveHelper configuration helper script
-	WORKDIR=$(WORKDIR) LIVEDIR=$(LIVEDIR) \
-		REPO=$(REPO) REPO_MULTIMEDIA=$(REPO_MULTIMEDIA) \
-		REPO_SECTIONS=$(REPO_SECTIONS) \
-		REPO_BRANCH=$(REPO_BRANCH) DEB_TARGET=$(DEB_TARGET) \
-		PACKAGE_DEB=$(PACKAGE_DEB) INQ_VERSION=$(INQ_VERSION) \
-		SHARE_DIR=$(SHARE_DIR) \
-		IMAGE_DIR=$(IMAGE_DIR) \
-		CUSTOM_KERNEL=$(CUSTOM_KERNEL) \
-		build/debian/live_lh_config.sh
+#	WORKDIR=$(WORKDIR) LIVEDIR=$(LIVEDIR) \
+#		REPO=$(REPO) REPO_MULTIMEDIA=$(REPO_MULTIMEDIA) \
+#		REPO_SECTIONS=$(REPO_SECTIONS) \
+#		REPO_BRANCH=$(REPO_BRANCH) DEB_TARGET=$(DEB_TARGET) \
+#		PACKAGE_DEB=$(PACKAGE_DEB) INQ_VERSION=$(INQ_VERSION) \
+#		SHARE_DIR=$(SHARE_DIR) \
+#		IMAGE_DIR=$(IMAGE_DIR) \
+#		CUSTOM_KERNEL=$(CUSTOM_KERNEL) \
+	build/debian7/run.sh
 
 build-root-live: check-repo-defined build-live-configure
 	cd $(WORKDIR)/$(LIVEDIR) && export MKSQUASHFS_OPTIONS="-e boot" && sudo lb bootstrap
