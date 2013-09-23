@@ -1,3 +1,0 @@
-#!/bin/sh
-
-COMPUTER_ID=`get_id_by_macs \`get-macs\``

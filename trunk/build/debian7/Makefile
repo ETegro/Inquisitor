@@ -1,98 +1,117 @@
-include Makefile.config
-.SILENT: default
-.PHONY: default client server data all
-
-#===============================================================================
-# Major targets
-#===============================================================================
-
-default:
-	echo 'Use "make all" if you really want to rebuild everything from scratch'
-
-client:
-	$(MAKE) -C client
-
-server:
-	$(MAKE) -C server
-
-data:
-	$(MAKE) -C data
+DEB_TARGET=$(TARGET)
+ifeq ($(TARGET), i586)
+DEB_TARGET=i386
+endif
+ifeq ($(TARGET), x86_64)
+DEB_TARGET=amd64
+endif
 
 ifeq ($(FLAVOUR), enterprise)
-all: build-package data build-root rsync build-server rsync-server
+build-root: build-root-enterprise
 else
 ifeq ($(FLAVOUR), live)
-all: build-package data build-root build-boot build-live
-else
-ifeq ($(FLAVOUR), standalone)
-all: build-package
-else
-ifeq ($(FLAVOUR), inventory)
-all: build-package
-else
-ifeq ($(FLAVOUR), tennex)
-all: build-package
-else
-all:
-	echo 'Edit Makefile.config to set up FLAVOUR to one of the valid values'
-endif
-endif
-endif
+build-root: build-root-live
 endif
 endif
 
-#===============================================================================
-# Misc targets
-#===============================================================================
+PACKAGE_NAME=inquisitor-client
+PACKAGE_VERSION=1.0
+PACKAGE_RELEASE=1
+PACKAGE_DIR=$(PACKAGE_NAME)-$(PACKAGE_VERSION)-$(PACKAGE_RELEASE)
+PACKAGE_DEB=$(PACKAGE_NAME)_$(PACKAGE_VERSION)-$(PACKAGE_RELEASE)_$(DEB_TARGET).deb
 
-clean: repo-clean
-	rm -Rf $(WORKDIR)
-	CONFIG=$(CONFIG) $(MAKE) -C client clean
+# Local build paths
+WORKDIR=$(PWD)/work
+ROOTDIR=chroot
+LIVEDIR=live
+DEBS=$(PWD)/repo
 
-# Files with metadata, gathered from client modules
-metadata:
-	cd server/web/lib/planner && ./configure
-	cd ../web && ./generate-from-metadata
+.PHONY: build-package
 
-# Generate API documentation for the website
-doc:
-	cd ../web && ./generate-api-doc
+rebuild_deb=\
+	rm -rf $(WORKDIR)/build-package; \
+	mkdir -p $(WORKDIR)/build-package; \
+	cp -r client $(WORKDIR)/build-package/$(PACKAGE_DIR); \
+	cp -r flavour Makefile.config $(WORKDIR)/build-package; \
+	cp -r build/debian/debian $(WORKDIR)/build-package/$(PACKAGE_DIR); \
+	cp build/debian/init.$(FLAVOUR) $(WORKDIR)/build-package/$(PACKAGE_DIR)/main/init; \
+	cd $(WORKDIR)/build-package/$(PACKAGE_DIR) && dpkg-buildpackage -b -a$(DEB_TARGET) -us -uc
 
-#===============================================================================
-# Client image deployment
-#===============================================================================
+build-package:
+	$(rebuild_deb)
 
-rsync:
-	ssh $(DEPLOY_HOST) "mkdir -p $(DEPLOY_PATH); sudo chown root:inquisitor $(DEPLOY_PATH)"
-	sudo rsync -rlptv --delete-after --exclude=usr/lib/inquisitor/images --exclude=etc/inquisitor/users $(WORKDIR)/$(ROOTDIR)/* root@$(DEPLOY_HOST):$(DEPLOY_PATH)
-	ssh $(DEPLOY_HOST) "sudo rm -f $(DEPLOY_PATH)/dev/console $(DEPLOY_PATH)/dev/null; sudo mknod $(DEPLOY_PATH)/dev/console c 5 1; sudo mknod $(DEPLOY_PATH)/dev/null c 1 3"
+$(WORKDIR)/build-package/$(PACKAGE_DEB):
+	$(rebuild_deb)
 
-rsync-list:
-	rsync -rlptvn --delete-after --exclude=usr/lib/inquisitor/images --exclude=etc/inquisitor/users $(WORKDIR)/$(ROOTDIR)/* $(DEPLOY_HOST):$(DEPLOY_PATH)
+build-root-enterprise: check-repo-defined $(WORKDIR)/build-package/$(PACKAGE_DEB)
+	# Cleanup from previous build
+	sudo rm -rf $(WORKDIR)/$(ROOTDIR)
+	mkdir -p $(WORKDIR)/$(ROOTDIR)
+	# Creating chroot itself
+	debootstrap $(REPO_BRANCH) $(WORKDIR)/$(ROOTDIR) $(REPO)
+	# Copy additional .deb packages
+	if [ -d $(DEBS) ]; then cp $(DEBS)/* $(WORKDIR)/$(ROOTDIR); fi
+	# Copy images if present
+	if [ -d $(IMAGE_DIR) ]; then cp -r $(IMAGE_DIR) $(WORKDIR)/$(ROOTDIR)/img; fi
+	if [ -d data ]; then cp -r data $(WORKDIR)/$(ROOTDIR)/data; fi
+	# Copy Inquisitor client package
+	cp $(WORKDIR)/build-package/$(PACKAGE_DEB) $(WORKDIR)/$(ROOTDIR)
+	# Copy build-specific temporary files
+	cp build/debian/packages \
+	   build/debian/remove_packages \
+	   build/debian/debs \
+	   build/debian/preseed $(WORKDIR)/$(ROOTDIR)
+	# Run post-debootstrap installation scripts
+	CHROOT_PATH=$(WORKDIR)/$(ROOTDIR) \
+		REPO=$(REPO) \
+		REPO_MULTIMEDIA=$(REPO_MULTIMEDIA) \
+		BRANCH=$(REPO_BRANCH) \
+		SERVER=$(shell sed -n 's/^SERVER=\(.*\)$$/\1/p' < $(PWD)/client/main/global.in) \
+		SHARE_DIR=$(SHARE_DIR) \
+		DEBUG_TTY=$(DEBUG_TTY) build/debian7/run_scripts.sh
 
-#rsync-images:
-#	ssh $(DEPLOY_HOST) mkdir -p $(DEPLOY_PATH)/usr/lib/inquisitor/images
-#	rsync -rlptv --delete image-huge/images/* $(DEPLOY_HOST):$(DEPLOY_PATH)/usr/lib/inquisitor/images
+build-boot:
+	echo "There is no real build-boot target. It is dummy."
 
-#rsync-repository:
-#	ssh $(DEPLOY_HOST) "mkdir -p $(DEPLOY_PATH)$(COMPACT_PATH); sudo chown -R greycat.inquisitor $(DEPLOY_PATH)$(COMPACT_PATH)"
-#	rsync -vrpl --exclude=files/SRPMS /raid/Sisyphus-branch-3.0 $(DEPLOY_HOST):$(DEPLOY_PATH)$(COMPACT_PATH)
+build-live-configure:
+	mkdir -p $(WORKDIR)/$(LIVEDIR)
+	cd $(WORKDIR)/$(LIVEDIR) && sudo lb clean
+	sudo rm -rf $(WORKDIR)/$(LIVEDIR)
+	mkdir -p $(WORKDIR)/$(LIVEDIR)
+	# Run LiveCD LiveHelper configuration helper script
+	WORKDIR=$(WORKDIR) LIVEDIR=$(LIVEDIR) \
+		REPO=$(REPO) REPO_MULTIMEDIA=$(REPO_MULTIMEDIA) \
+		REPO_SECTIONS=$(REPO_SECTIONS) \
+		REPO_BRANCH=$(REPO_BRANCH) DEB_TARGET=$(DEB_TARGET) \
+		PACKAGE_DEB=$(PACKAGE_DEB) INQ_VERSION=$(INQ_VERSION) \
+		SHARE_DIR=$(SHARE_DIR) \
+		IMAGE_DIR=$(IMAGE_DIR) \
+		CUSTOM_KERNEL=$(CUSTOM_KERNEL) \
+		build/debian/live_lh_config.sh
 
-#===============================================================================
-# Server deployment
-#===============================================================================
+build-root-live: check-repo-defined build-live-configure
+	cd $(WORKDIR)/$(LIVEDIR) && export MKSQUASHFS_OPTIONS="-e boot" && sudo lb bootstrap
+	cd $(WORKDIR)/$(LIVEDIR) && export MKSQUASHFS_OPTIONS="-e boot" && sudo lb chroot
 
-rsync-server:
-	rsync -rlptv --delete server $(DEPLOY_HOST):
-	rsync -rlptv --delete configs $(DEPLOY_HOST):
-	ssh $(DEPLOY_HOST) "cd server; CONFIG=$(CONFIG) sudo make install"
+build-live:
+	cd $(WORKDIR)/$(LIVEDIR) && sudo lb clean --binary
+	cd $(WORKDIR)/$(LIVEDIR) && export MKSQUASHFS_OPTIONS="-e boot" && sudo lb binary
 
-#===============================================================================
+update-package:
+	sudo cp $(WORKDIR)/build-package/$(PACKAGE_DEB) $(WORKDIR)/$(ROOTDIR)
+	sudo chroot $(WORKDIR)/$(ROOTDIR) dpkg --purge $(PACKAGE_NAME) || :
+	sudo chroot $(WORKDIR)/$(ROOTDIR) dpkg --install /$(PACKAGE_DEB) || :
+	sudo rm -f $(WORKDIR)/$(ROOTDIR)/$(PACKAGE_DEB)
 
-# Some sanity checks
-ifndef CLIENT_BASE
-$(error CLIENT_BASE not defined. Please edit Makefile.config to specify your build system Linux distribution in CLIENT_BASE.)
-endif
+update-package-remote:
+	scp $(WORKDIR)/build-package/$(PACKAGE_DEB) $(DEPLOY_HOST):
+	ssh $(DEPLOY_HOST) -- sudo mv $(PACKAGE_DEB) $(DEPLOY_PATH)
+	ssh $(DEPLOY_HOST) -- sudo chroot $(DEPLOY_PATH) dpkg --purge $(PACKAGE_NAME) || true
+	ssh $(DEPLOY_HOST) -- sudo chroot $(DEPLOY_PATH) dpkg --install /$(PACKAGE_DEB)
+	ssh $(DEPLOY_HOST) -- sudo rm -f $(DEPLOY_PATH)/$(PACKAGE_DEB)
 
-# Include client platform-dependent build instructions
-include build/$(CLIENT_BASE)/Makefile
+repo-clean:
+	rm -f $(WORKDIR)/build-package/$(PACKAGE_DEB)
+
+check-repo-defined:
+	@if [ "$(REPO)" = ftp://your.mirror.here/debian ]; then echo 'REPO not defined. Please edit Makefile.config to specify your Debian-compatible repository in REPO.'; exit 1; fi

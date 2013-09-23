@@ -19,7 +19,10 @@ function build() {
 	mkdir -p $BUILDDIR
 	cd $BUILDDIR
 	cp -rv ../packages $BUILDDIR/
-	for i in `ls ${BUILDDIR}/packages/`; do
-		cd ${BUILDDIR}/packages/${i}
-		dpkg-buildpackage
+#	for i in `ls ${BUILDDIR}/packages/`; do
+#		cd ${BUILDDIR}/packages/${i}
+#		dpkg-buildpackage
+#    done
+
+# 
 }

@@ -1,5 +1,0 @@
-#!/bin/sh
-
-echo "I: setting up root home directory"
-
-usermod -d /home root || true
