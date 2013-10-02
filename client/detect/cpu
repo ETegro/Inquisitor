@@ -28,6 +28,7 @@ unset processor phys_id vendor model
 # known dash bug: does *not* take consequent $IFS chars as a single delimiter
 while read key val; do
 	val="${val# }"
+	val=`echo $val | sed -e 's/ *$//g'`
 	case "$key" in
 	# single-core CPUs don't get a "physical id" line, even SMP
 	"processor") processor="$val";;
