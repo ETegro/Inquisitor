@@ -3,6 +3,11 @@
 use warnings;
 use strict;
 
+require File::Temp;
+use File::Temp ();
+use File::Temp qw/ :seekable /;
+use utf8;
+
 use threads ("exit" => "threads_only");
 use threads::shared;
 use Getopt::Std;
@@ -86,6 +91,7 @@ sub start_badblocks {
 			if($str =~ / ([0-9.]+)% done, .* elapsed/){
 				$sd{$harddrive}{doned} = int( $sd{$harddrive}{total} * $1 * 0.01 );
 			} else {
+				next if $str =~ /errors/;
 				next unless $str =~ /(\d+)\s*\/\s*\d+/;
 				$sd{$harddrive}{doned} = $1;
 			};
@@ -167,6 +173,8 @@ sub redraw_screen {
 			# ETA calculation
 			my $eta = "NaN";
 			if($speed){
+        $sd{$key}{summ_speed}=$speed + $sd{$key}{summ_speed};
+        $sd{$key}{count}+=1;
 				$eta = ($sd{$key}{total} - $sd{$key}{doned}) / ($speed * 60);
 				$maxeta = $eta if $eta > $maxeta;
 				$eta = sprintf "%2d:%2d", int($eta / 60), int($eta % 60);
@@ -294,7 +302,6 @@ sub bb_loop {
 	while( alive_threads() ) { sleep $UPDATE_PERIOD; redraw_screen(); };
 	redraw_screen();
 	write_graph_data() if defined $options{g};
-	return_bad_hdds();
 };
 
 sub perform_exit {
@@ -314,8 +321,8 @@ $BADBLOCKS_COMMAND .= defined $options{b} ? "-b $options{b} " : "-b 1024 ";
 $BADBLOCKS_COMMAND .= "-t $options{p} " if defined $options{p} and $options{p} ne "";
 $BADBLOCKS_COMMAND .= defined $options{o} ? "-c $options{o} " : "-c 64 ";
 for($options{m}){
-	if( $_ and /non-destructive/ ){ $BADBLOCKS_COMMAND .= "-n "; };
-	if( $_ and /^destructive/ ){ $BADBLOCKS_COMMAND .= "-w "; };
+	if(/non-destructive/){ $BADBLOCKS_COMMAND .= "-n "; };
+	if(/^destructive/){ $BADBLOCKS_COMMAND .= "-w "; };
 };
 print "Badblocks command: $BADBLOCKS_COMMAND\n";
 
@@ -330,7 +337,8 @@ foreach (@harddrives) {
 	$sd{$_}{found} = 0;
 	$sd{$_}{doned} = 0;
 	$sd{$_}{total} = 0;
-	$sd{$_}{total} = 0;
+  $sd{$_}{summ_speed}=0;
+  $sd{$_}{count}=0;
 
 	# Start badblocks thread itself
 	$threads{$_} = threads->create('start_badblocks', $_);
@@ -352,3 +360,17 @@ if(defined $options{t}){
 } else {
 	bb_loop();
 };
+
+ foreach (@harddrives) {
+       die "$_ is not a block device\n" unless -b $_;
+         $sd{$_}{disk}=`mdadm -D $_ |  awk  -F '/dev/' '{print \$2}'`;
+         # Write average speed to tmp file
+         my $tmp = File::Temp->new( UNLINK => 0, SUFFIX => '.hdd_badblocks' );
+          $sd{$_}{average_speed}=$sd{$_}{summ_speed}/$sd{$_}{count};
+         my $var .=sprintf "%s=%10d\n",$sd{$_}{disk}, $sd{$_}{average_speed};
+         print $tmp $var;
+       close $tmp;
+       }
+
+     return_bad_hdds();
+
