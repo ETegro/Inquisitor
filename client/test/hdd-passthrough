@@ -20,6 +20,7 @@
 
 . _inq-config-global; . $SHARE_DIR/functions-test
 
+
 echo 0 > /proc/sys/kernel/hung_task_timeout_secs 2>/dev/null || true
 
 exit_handler()
@@ -47,6 +48,12 @@ fi
 
 badblocks_test()
 {
+  
+    for file in `ls /tmp/*.hdd_badblocks`; do
+ 	if [ -e $file ]; then 
+   		rm -f $file
+	fi
+    done
 	local GROUP_NUMBER=0
 	while raid-wizard-passthrough $DISK_GROUP_SIZE $GROUP_NUMBER; do
 		sleep 10 # Dirty hack again
@@ -54,7 +61,8 @@ badblocks_test()
 					    -b "$BADBLOCKS_BLOCKSIZE" \
 					    -p "$BADBLOCKS_PATTERN" \
 					    -o "$BADBLOCKS_BLOCKS_TESTED_AT_ONCE" \
-					    -i `get_hdds_list` 2>"$ERROR_FILE" || true
+					    -i `get_hdds_list` || true
+						#2>"$ERROR_FILE" || true
 		GROUP_NUMBER=$(( $GROUP_NUMBER + 1 ))
 	done
 
@@ -97,9 +105,9 @@ stress_test()
 
 START_TIME=`date "+%s"`
 
-sleep 5
+sleep 50
 raid-hdd-revision || true
-sleep 5
+sleep 50
 
 # Run badblocks and compilation processes simultaneously
 if ! raid-hdd-revision; then
@@ -124,6 +132,21 @@ if [ -s "$ERROR_FILE" ]; then
 	else
 		test_failed "`sed -n '1p' < $ERROR_FILE`"
 	fi
-else
+else 
+   for file in `ls /tmp/*.hdd_badblocks`; do
+   if [ -e $file ]; then 
+          line=$(tr '\n' ' ' <$file)
+          out_key=`echo $line | awk -F '=' '{print $1}'`
+          value=`echo $line | awk -F '=' '{print $2}'`
+          disk='/dev/'`echo ${out_key:5}`          
+          #smartctl --info '/dev/'`mdadm -D /dev/md0 | grep /dev/s | awk  -F '/dev/' '{print $2}'` | awk -F 'Product:' '{print $2}'
+          #smartctl --info '/dev/'`mdadm -D /dev/md0 | grep /dev/s | awk  -F '/dev/' '{print $2}'` | awk -F 'Serial number:' '{print $2}'
+          product=`smartctl --info $disk | grep Product | awk -F 'Product:' '{print $2}'`
+          serial=`smartctl --info $disk | grep Serial | awk -F 'Serial number:' '{print $2}'`
+          benchmark_submit_float "HDD Model: $product \n HDD Serial: $serial " $value "blocks/sec (bs:$BADBLOCKS_BLOCKSIZE)"
+          rm -f $file;
+   fi
+   done
 	test_succeeded
 fi
+
