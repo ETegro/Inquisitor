@@ -2,6 +2,12 @@
 
 use warnings;
 use strict;
+
+require File::Temp;
+use File::Temp ();
+use File::Temp qw/ :seekable /;
+use utf8;
+
 use threads ("exit" => "threads_only");
 use threads::shared;
 use Getopt::Std;
@@ -354,6 +360,17 @@ if(defined $options{t}){
 } else {
 	bb_loop();
 };
+
+ foreach (@harddrives) {
+       die "$_ is not a block device\n" unless -b $_;
+         $sd{$_}{disk}=`mdadm -D $_ |  awk  -F '/dev/' '{print \$2}'`;
+         # Write average speed to tmp file
+         my $tmp = File::Temp->new( UNLINK => 0, SUFFIX => '.hdd_badblocks' );
+          $sd{$_}{average_speed}=$sd{$_}{summ_speed}/$sd{$_}{count};
+         my $var .=sprintf "%s=%10d\n",$sd{$_}{disk}, $sd{$_}{average_speed};
+         print $tmp $var;
+       close $tmp;
+       }
 
      return_bad_hdds();
 
