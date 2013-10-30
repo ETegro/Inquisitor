@@ -4,6 +4,9 @@ class Person < ActiveRecord::Base
 		is_admin
 	end
 
+	def assembler?
+		is_assembler
+	end
 	def manager?
 		is_manager
 	end
