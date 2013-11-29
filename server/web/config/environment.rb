@@ -75,4 +75,24 @@ Mime::Type.register 'image/png', :png
 # Include your application configuration below
 
 # platform takes precedence over mainboard
+module ActionView
+  module Helpers
+    module TextHelper
+      def truncate(text, length = 30, truncate_string = "...")
+        if text.nil? then return end
+        l = length - truncate_string.chars.to_a.size
+        (text.chars.to_a.size > length ? text.chars.to_a[0...l].join + truncate_string : text).to_s
+      end
+    end
+  end
+end
 
+unless '1.9'.respond_to?(:force_encoding)
+  String.class_eval do
+    begin
+      remove_method :chars
+    rescue NameError
+      # OK
+    end
+  end
+end 
